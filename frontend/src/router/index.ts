@@ -38,7 +38,7 @@ const router = createRouter({
 })
 
 // Route guards
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
 
   // Try to load current user if not loaded

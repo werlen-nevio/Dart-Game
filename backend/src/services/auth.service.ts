@@ -144,9 +144,11 @@ export class AuthService {
       username: user.username,
     };
 
-    return jwt.sign(payload, config.jwt.accessSecret, {
-      expiresIn: config.jwt.accessExpiry as string,
-    });
+    // Generate JWT access token
+    const options: jwt.SignOptions = {
+      expiresIn: config.jwt.accessExpiry as any,
+    };
+    return jwt.sign(payload, config.jwt.accessSecret, options);
   }
 
   private async generateRefreshToken(userId: string): Promise<string> {
@@ -164,9 +166,11 @@ export class AuthService {
       username: user.username,
     };
 
-    const token = jwt.sign(payload, config.jwt.refreshSecret, {
-      expiresIn: config.jwt.refreshExpiry as string,
-    });
+    // Generate JWT refresh token
+    const options: jwt.SignOptions = {
+      expiresIn: config.jwt.refreshExpiry as any,
+    };
+    const token = jwt.sign(payload, config.jwt.refreshSecret, options);
 
     // Store in DB
     const expiresAt = new Date();
