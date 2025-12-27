@@ -5,40 +5,34 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: dart-party-backend
-    restart: unless-stopped
+    container_name: dart-backend
     ports:
-      - "3001:3001"
-    environment:
-      NODE_ENV: production
-      PORT: 3001
-      DATABASE_URL: file:./data/prod.db
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-this-in-production}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-this-in-production}
-      JWT_ACCESS_EXPIRY: 15m
-      JWT_REFRESH_EXPIRY: 7d
-      CORS_ORIGIN: http://localhost
+      - "3000:3000"
     volumes:
-      - backend-data:/app/data
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
     networks:
-      - dart-party-network
+      - dart-network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: dart-party-frontend
-    restart: unless-stopped
+    container_name: dart-frontend
     ports:
-      - "80:80"
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
     depends_on:
       - backend
     networks:
-      - dart-party-network
-
-volumes:
-  backend-data:
+      - dart-network
 
 networks:
-  dart-party-network:
+  dart-network:
     driver: bridge

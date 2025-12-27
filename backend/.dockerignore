@@ -1,9 +1,5 @@
 node_modules
-dist
+npm-debug.log
 .env
-*.log
 .git
 .gitignore
-README.md
-dev.db
-dev.db-journal

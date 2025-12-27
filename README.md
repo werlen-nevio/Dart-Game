@@ -1,420 +1,190 @@
-# 🎯 Dart Party - Multiplayer Dart Game
+# 🎯 Dart Online
 
-Eine produktionsnahe Webapp für Online-Multiplayer-Dart. Freunde können von zuhause aus gemeinsam in einer Party spielen, Ergebnisse in Echtzeit eingeben und X01 (301/501) mit Single-Out oder Double-Out Regeln spielen.
+Eine simple Echtzeit-Webapp für Dart-Spiele (X01: 301 & 501) mit Freunden.
 
 ## Features
 
-### ✨ Funktionen
-- **Multiplayer Lobby System**: Erstelle oder trete Parties bei (2 bis ∞ Spieler)
-- **Live Presence**: Echtzeit-Anzeige aller Spieler und deren Status
-- **X01 Game Modes**: 301 und 501 mit Single-Out oder Double-Out
-- **Turn-Based Gameplay**: Klare Zugreihenfolge mit automatischem Wechsel
-- **Validierung**: Serverseitige Bust-Erkennung, Double-Out Checkout-Bestätigung
-- **Undo Funktion**: Letzte Aktion rückgängig machen (für alle synchron)
-- **Action History**: Letzte 20 Aktionen mit Timestamps
-- **Host Controls**: Spieler kicken, Reihenfolge ändern, Spiel resetten
-- **Mobile-First UI**: Optimiert für Touch-Bedienung
+- **Einfacher Login** (nur Username, kein Passwort)
+- **Party erstellen & beitreten** via 6-stelligem Code
+- **Echtzeit-Synchronisation** aller Spieler via Socket.IO
+- **X01 Spielmodi** (301 & 501)
+- **Single/Double Out**
+- **Mobile-friendly** Button-Interface
+- **Undo-Funktion**
+- **Reconnect** (Party-State bleibt erhalten)
 
-### 🔐 Authentication
-- Email + Passwort Registration/Login
-- JWT Access Token (15min) + Refresh Token (7 Tage, httpOnly Cookie)
-- Route Guards für geschützte Bereiche
-- Automatisches Token Refresh
+## Quick Start
 
-### 🎮 Spielablauf
-1. **Party erstellen**: Name, Startscore (301/501), Out-Regel wählen
-2. **Freunde einladen**: 6-stelligen Party-Code teilen
-3. **Lobby**: Alle Spieler sehen sich live, Host startet das Spiel
-4. **Spielen**: Punkteeingabe über Buttons, Checkout-Bestätigung bei Double-Out
-5. **Gewinner**: Automatische Erkennung bei exakt 0 Punkten
+### Option 1: Docker (Empfohlen)
 
-## Tech Stack
+Alles auf einen Schlag starten:
 
-### Backend
-- **Node.js + Express**: REST API
-- **Socket.IO**: Echtzeit-Kommunikation
-- **Prisma + SQLite**: Datenbank ORM
-- **TypeScript**: Type-Safety
-- **bcrypt**: Passwort-Hashing
-- **jsonwebtoken**: Auth
-- **zod**: Input Validation
-- **Jest**: Unit Tests
+```bash
+docker-compose up --build
+```
 
-### Frontend
-- **Vue 3 (Composition API)**: Framework
-- **Vite**: Build Tool
-- **TypeScript**: Type-Safety
-- **Tailwind CSS**: Styling
-- **Pinia**: State Management
-- **Vue Router**: Routing
-- **Axios**: HTTP Client
-- **Socket.IO Client**: WebSocket
+Das wars! Die App läuft jetzt:
+- **Frontend:** http://localhost:5173
+- **Backend:** http://localhost:3000
 
-### DevOps
-- **Docker + Docker Compose**: Containerization
-- **Nginx**: Frontend Proxy
-- **Multi-stage builds**: Optimierte Images
+Zum Beenden:
+```bash
+docker-compose down
+```
 
-## 🚀 Getting Started
+### Option 2: Manuell
 
-### Voraussetzungen
-- Node.js 20+
-- npm oder yarn
-- (Optional) Docker & Docker Compose
+#### 1. Dependencies installieren
 
-### Lokale Entwicklung
+```bash
+# Backend
+cd backend
+npm install
 
-#### Backend starten
+# Frontend
+cd ../frontend
+npm install
+```
+
+#### 2. Backend starten
 
 ```bash
 cd backend
-npm install
-npx prisma migrate dev
-npx prisma generate
 npm run dev
 ```
 
-Backend läuft auf: `http://localhost:3001`
+Server läuft auf: `http://localhost:3000`
 
-#### Frontend starten
+#### 3. Frontend starten
 
 ```bash
 cd frontend
-npm install
 npm run dev
 ```
 
 Frontend läuft auf: `http://localhost:5173`
 
-### Docker Deployment
+### Spielen
 
-```bash
-# .env Datei erstellen (kopiere .env.example)
-cp .env.example .env
+1. Öffne `http://localhost:5173` im Browser
+2. Gib einen Username ein und klicke "Login"
+3. Erstelle eine Party oder trete einer bei (mit Code)
+4. Spiele Dart!
 
-# WICHTIG: Ändere die JWT Secrets in .env!
+## Tech Stack
 
-# Container bauen und starten
-docker-compose up --build
+- **Frontend:** Vue 3 + Vite
+- **Backend:** Node.js + Express + Socket.IO
+- **Database:** In-Memory (Map) – kein Persist, aber Reconnect funktioniert
 
-# Im Hintergrund:
-docker-compose up -d
+## Socket.IO Events
+
+### Client → Server
+
+| Event | Payload | Beschreibung |
+|-------|---------|--------------|
+| `user:login` | `username` (String) | User einloggen |
+| `party:create` | `{ partyName, mode, outMode }` | Party erstellen |
+| `party:join` | `code` (String) | Party beitreten |
+| `game:add_throw` | `value` (Number) | Punkte zu aktuellem Wurf hinzufügen |
+| `game:clear_throw` | - | Aktuellen Wurf zurücksetzen |
+| `game:submit_throw` | `{ doubleHit }` (Boolean) | Wurf bestätigen & Score abziehen |
+| `game:next_player` | - | Nächster Spieler ist dran |
+| `game:undo` | - | Letzten Wurf rückgängig machen |
+
+### Server → Client
+
+| Event | Payload | Beschreibung |
+|-------|---------|--------------|
+| `user:logged_in` | `{ username }` | Login bestätigt |
+| `party:created` | `party` (Object) | Party erstellt |
+| `party:joined` | `party` (Object) | Party beigetreten |
+| `party:state` | `party` (Object) | Aktueller Party-State (Broadcast) |
+| `game:bust` | `message` (String) | Bust-Fehler (Score < 0) |
+| `game:double_required` | `message` (String) | Double-Out nicht getroffen |
+| `game:winner` | `username` (String) | Spieler hat gewonnen |
+| `error` | `message` (String) | Allgemeiner Fehler |
+
+### Party Object Struktur
+
+```javascript
+{
+  code: String,           // 6-stelliger Party-Code
+  name: String,           // Party-Name
+  mode: String,           // "301" oder "501"
+  outMode: String,        // "single" oder "double"
+  players: [              // Array aller Spieler
+    {
+      username: String,
+      score: Number,
+      socketId: String
+    }
+  ],
+  currentPlayerIndex: Number,  // Index des aktuellen Spielers
+  currentThrow: Number,        // Aktueller Wurf (nicht submitted)
+  history: [                   // Wurf-Historie
+    {
+      player: String,
+      throw: Number,
+      newScore: Number,
+      timestamp: Number
+    }
+  ]
+}
 ```
 
-App läuft auf: `http://localhost`
+## Spielregeln
 
-### Stoppen
+### Punkteeingabe
 
-```bash
-docker-compose down
+- **Buttons:** 1, 5, 10, 20, 25, 50, 60, 100, 140, 180
+- Buttons addieren zum aktuellen Wurf
+- **Clear:** Setzt aktuellen Wurf zurück
+- **Submit:** Zieht Punkte ab und speichert Wurf
+- **Next Player:** Wechselt zum nächsten Spieler
+- **Undo:** Macht letzten Wurf rückgängig
 
-# Mit Daten löschen:
-docker-compose down -v
-```
+### Bust & Win
 
-## 📁 Projektstruktur
+- **Bust:** Wenn Score < 0 werden würde → Wurf wird nicht gespeichert
+- **Win:** Exakt 0 Punkte
+- **Double-Out:** Bei exakt 0 erscheint Modal "Double getroffen?" → Nur bei "Ja" wird Win gespeichert
+- **Single-Out:** Exakt 0 reicht für Win
+
+### Reconnect
+
+- Bei Disconnect: User bleibt in Party (socketId wird nicht gelöscht)
+- Bei Reconnect: User kann mit gleichem Username wieder joinen → socketId wird aktualisiert
+- Party-State bleibt vollständig erhalten (solange Server läuft)
+
+## Projekt-Struktur
 
 ```
 dart-game/
 ├── backend/
-│   ├── prisma/
-│   │   └── schema.prisma          # Datenbank Schema
-│   ├── src/
-│   │   ├── config/                # Konfiguration
-│   │   ├── middleware/            # Auth & Validation
-│   │   ├── routes/                # REST API Routes
-│   │   ├── services/              # Business Logic
-│   │   │   ├── auth.service.ts    # Authentication
-│   │   │   ├── game.service.ts    # X01 Validation
-│   │   │   └── party.service.ts   # Party Management
-│   │   ├── socket/                # Socket.IO Handler
-│   │   ├── types/                 # TypeScript Types
-│   │   ├── utils/                 # Helper Functions
-│   │   └── index.ts               # Server Entry
-│   ├── Dockerfile
-│   └── package.json
-│
+│   ├── package.json
+│   └── server.js          # Express + Socket.IO Server
 ├── frontend/
-│   ├── src/
-│   │   ├── components/            # Vue Components
-│   │   ├── router/                # Vue Router + Guards
-│   │   ├── services/              # API & Socket Services
-│   │   ├── stores/                # Pinia Stores
-│   │   ├── types/                 # TypeScript Types
-│   │   ├── views/                 # Page Components
-│   │   │   ├── Login.vue
-│   │   │   ├── Register.vue
-│   │   │   ├── Dashboard.vue
-│   │   │   └── Party.vue          # Haupt-Spielansicht
-│   │   ├── App.vue
-│   │   ├── main.ts
-│   │   └── style.css
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   └── package.json
-│
-├── docker-compose.yml
-├── .env.example
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── index.html
+│   └── src/
+│       ├── main.js
+│       ├── style.css
+│       └── App.vue        # Main Vue Component
 └── README.md
 ```
 
-## 🔧 Konfiguration
+## Erweiterungen (Optional)
 
-### Backend Environment Variables
+Falls du später mehr willst:
 
-```env
-NODE_ENV=development
-PORT=3001
-DATABASE_URL="file:./dev.db"
-JWT_ACCESS_SECRET=your-secret-min-32-chars
-JWT_REFRESH_SECRET=your-secret-min-32-chars
-JWT_ACCESS_EXPIRY=15m
-JWT_REFRESH_EXPIRY=7d
-CORS_ORIGIN=http://localhost:5173
-```
+- **Persistenz:** SQLite + Prisma einbauen (Party-State speichern)
+- **Stats:** Durchschnittswurf, Checkout-Quote, etc.
+- **Weitere Modi:** Cricket, Around the Clock
+- **Auth:** Echtes Login mit Passwort
+- **Deployment:** Railway, Render, Vercel
 
-### Frontend Configuration
+## Lizenz
 
-Frontend-Konfiguration ist in `vite.config.ts`:
-- API Proxy: `/api` → `http://localhost:3001`
-- Port: `5173`
-
-## 📡 API Dokumentation
-
-### REST API Endpoints
-
-#### Authentication
-
-**POST** `/api/auth/register`
-```json
-{
-  "email": "user@example.com",
-  "username": "player1",
-  "password": "secure123"
-}
-```
-
-**POST** `/api/auth/login`
-```json
-{
-  "email": "user@example.com",
-  "password": "secure123"
-}
-```
-
-**POST** `/api/auth/logout`
-- No body required
-
-**POST** `/api/auth/refresh`
-- Uses httpOnly cookie
-
-**GET** `/api/auth/me`
-- Requires Bearer token
-
-### Socket.IO Events
-
-Siehe ARCHITECTURE.md für vollständige Dokumentation.
-
-#### Client → Server Events
-
-```typescript
-'party:create'          // Party erstellen
-'party:join'            // Party beitreten
-'party:leave'           // Party verlassen
-'party:kick'            // Spieler kicken (Host only)
-'party:close'           // Party schließen (Host only)
-
-'game:start'            // Spiel starten (Host only)
-'game:reset'            // Spiel zurücksetzen (Host only)
-'game:score_entry'      // Punkte eintragen
-'game:checkout_confirm' // Checkout bestätigen
-'game:undo'             // Letzte Aktion rückgängig
-'game:turn_end'         // Zug beenden
-'game:randomize_order'  // Reihenfolge mischen (Host only)
-
-'party:get_state'       // Aktuellen State abrufen
-```
-
-#### Server → Client Events
-
-```typescript
-'party:updated'         // Party wurde aktualisiert
-'party:member_joined'   // Spieler ist beigetreten
-'party:member_left'     // Spieler hat verlassen
-'party:member_status'   // Online-Status geändert
-'party:closed'          // Party wurde geschlossen
-'party:kicked'          // Du wurdest gekickt
-
-'game:state_updated'    // Spielstand aktualisiert
-'game:action_logged'    // Neue Aktion geloggt
-'game:finished'         // Spiel beendet
-'party:full_state'      // Kompletter State Sync
-
-'error'                 // Fehler
-'notification'          // Info/Warning/Success
-```
-
-## 🎮 X01 Spielregeln & Validierung
-
-### Startscore
-- **301**: Kürzeres Spiel
-- **501**: Standard Turnier-Format
-
-### Out-Regeln
-
-#### Single-Out
-- Jeder Wurf zählt zum Auschecken
-- Score muss exakt 0 erreichen
-- **Bust**: Score < 0
-
-#### Double-Out
-- Letzter Wurf muss ein Double sein
-- Score muss exakt 0 erreichen mit Double
-- **Bust**: Score < 0 ODER Score = 1 (nicht mit Double auszuchecken)
-- **Checkout-Bestätigung**: Bei Score = 0 muss Spieler bestätigen, ob letzter Dart ein Double war
-
-### Serverseitige Validierung
-
-Alle Regeln werden autoritativ auf dem Server validiert:
-
-```typescript
-// Bust Detection
-if (newScore < 0) return 'Bust! Score cannot go below 0'
-
-// Double-Out: Score 1 unmöglich
-if (newScore === 1 && outRule === 'double')
-  return 'Bust! Cannot end on 1 with Double-Out'
-
-// Double-Out: Checkout Confirmation
-if (newScore === 0 && outRule === 'double')
-  // Modal: "War letzter Dart ein Double?"
-```
-
-### Undo Mechanik
-
-- Letzte Aktion wird rückgängig gemacht
-- Funktioniert für: Score Entry, Checkout, Turn End
-- Stellt Score UND Turn-Status wieder her
-- Synchron für alle Clients
-- Bei Win-Undo: Status wird auf "playing" zurückgesetzt
-
-## 🧪 Tests
-
-Backend Unit Tests für X01 Validation:
-
-```bash
-cd backend
-npm test
-```
-
-Tests abgedeckt:
-- ✅ Valid score entry (Single-Out)
-- ✅ Bust detection (score < 0)
-- ✅ Exact checkout to 0 (Single-Out)
-- ✅ Score = 1 allowed (Single-Out)
-- ✅ Checkout confirmation required (Double-Out)
-- ✅ Score = 1 rejection (Double-Out)
-- ✅ Valid/Invalid double checkout
-- ✅ Score application & winner detection
-- ✅ Undo functionality
-- ✅ Turn advancement
-
-## 🔒 Security
-
-### Implementierte Security Maßnahmen
-
-1. **Password Hashing**: bcrypt mit 10 Runden
-2. **JWT Tokens**:
-   - Access Token (short-lived, 15min)
-   - Refresh Token (httpOnly Cookie, 7 Tage)
-3. **Rate Limiting**: 100 Requests/15min für Auth-Endpoints
-4. **CORS**: Konfigurierbare Origins
-5. **Input Validation**: Zod schemas für alle Inputs
-6. **SQL Injection**: Geschützt durch Prisma ORM
-7. **XSS**: Vue escapet automatisch
-8. **CSRF**: SameSite Cookies
-
-### Production Checklist
-
-- [ ] JWT Secrets ändern (min. 32 Zeichen)
-- [ ] HTTPS aktivieren
-- [ ] `NODE_ENV=production` setzen
-- [ ] Database Backups einrichten
-- [ ] Rate Limits anpassen
-- [ ] Logging/Monitoring einrichten
-- [ ] CORS Origin auf Production Domain setzen
-
-## 🎨 UI/UX Features
-
-- **Mobile-First**: Buttons groß genug für Touch
-- **Live Updates**: Echtzeit ohne Reload
-- **Toast Notifications**: Feedback für alle Aktionen
-- **Loading States**: Disabled Buttons während Requests
-- **Error Handling**: User-freundliche Fehlermeldungen
-- **Responsive Design**: Funktioniert auf Phone, Tablet, Desktop
-- **Copy-to-Clipboard**: Einfaches Teilen des Party-Codes
-- **Visual Turn Indicator**: Aktueller Spieler ist highlighted
-- **Action History**: Letzten 20 Aktionen mit Timestamps
-
-## 🚧 Zukünftige Features (Erweiterbar)
-
-Die Architektur ist vorbereitet für:
-
-- **Weitere Spielmodi**: Cricket, Around the Clock
-- **Double-In Regel**: Toggle für X01
-- **Admin Mode**: Jeder kann für jeden eintragen
-- **Statistics**: Player Stats, Averages, Checkout-Quote
-- **Achievements**: Badges für 180er, High-Checkout, etc.
-- **Voice Chat**: Integration per WebRTC
-- **Replays**: Spiele nachschauen
-- **Tournaments**: Bracket-System
-- **Teams**: 2v2 Matches
-
-## 🐛 Troubleshooting
-
-### Backend startet nicht
-
-```bash
-# Prisma Client neu generieren
-npx prisma generate
-
-# Migrations anwenden
-npx prisma migrate dev
-```
-
-### Frontend kann nicht mit Backend verbinden
-
-- Prüfe ob Backend läuft (`http://localhost:3001/api/health`)
-- Prüfe CORS Settings in `backend/.env`
-- Prüfe Socket.IO URL in `frontend/src/services/socket.service.ts`
-
-### Socket.IO Verbindung schlägt fehl
-
-- Prüfe Access Token in localStorage
-- Prüfe Browser Console für Errors
-- Prüfe Backend Logs
-
-### Docker Container starten nicht
-
-```bash
-# Logs anschauen
-docker-compose logs backend
-docker-compose logs frontend
-
-# Container neu bauen
-docker-compose up --build --force-recreate
-```
-
-## 📄 Lizenz
-
-MIT License - Frei verwendbar für private und kommerzielle Projekte.
-
-## 🤝 Entwickler
-
-Entwickelt als produktionsnahes MVP für Online-Multiplayer-Dart.
-
-Bei Fragen oder Issues: GitHub Issues öffnen!
-
----
-
-**Happy Darting! 🎯**
+MIT – Viel Spaß beim Dart spielen! 🎯

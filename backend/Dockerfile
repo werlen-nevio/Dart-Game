@@ -1,28 +1,13 @@
-FROM node:20-alpine
-
-# Install OpenSSL for Prisma
-RUN apk add --no-cache openssl
+FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
-COPY prisma ./prisma/
 
-# Install dependencies
-RUN npm install --production=false
+RUN npm install
 
-# Copy source
 COPY . .
 
-# Generate Prisma Client
-RUN npx prisma generate
+EXPOSE 3000
 
-# Build TypeScript
-RUN npm run build
-
-# Expose port
-EXPOSE 3001
-
-# Start command
-CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
+CMD ["npm", "run", "dev"]
