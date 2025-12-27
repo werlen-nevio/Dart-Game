@@ -145,7 +145,7 @@ export class AuthService {
     };
 
     return jwt.sign(payload, config.jwt.accessSecret, {
-      expiresIn: config.jwt.accessExpiry,
+      expiresIn: config.jwt.accessExpiry as string,
     });
   }
 
@@ -165,7 +165,7 @@ export class AuthService {
     };
 
     const token = jwt.sign(payload, config.jwt.refreshSecret, {
-      expiresIn: config.jwt.refreshExpiry,
+      expiresIn: config.jwt.refreshExpiry as string,
     });
 
     // Store in DB
