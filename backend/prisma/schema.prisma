@@ -1,0 +1,107 @@
+// Prisma Schema for Dart Party
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  partyMembers PartyMember[]
+  createdParties Party[] @relation("PartyHost")
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model Party {
+  id          String   @id @default(uuid())
+  code        String   @unique // 6-char alphanumeric
+  name        String
+  hostId      String
+  isPublic    Boolean  @default(false)
+  status      String   @default("waiting") // waiting, playing, finished
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  host         User          @relation("PartyHost", fields: [hostId], references: [id], onDelete: Cascade)
+  members      PartyMember[]
+  gameState    GameState?
+  actionLogs   ActionLog[]
+
+  @@index([code])
+  @@index([hostId])
+}
+
+model PartyMember {
+  id        String   @id @default(uuid())
+  partyId   String
+  userId    String
+  isOnline  Boolean  @default(true)
+  joinedAt  DateTime @default(now())
+
+  // Relations
+  party Party @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([partyId, userId])
+  @@index([partyId])
+  @@index([userId])
+}
+
+model GameState {
+  id        String   @id @default(uuid())
+  partyId   String   @unique
+  mode      String   // "X01", "Cricket" (future)
+  settings  String   // JSON: {startScore: 301|501, outRule: "single"|"double", doubleIn: false}
+  scores    String   // JSON: {[userId]: {score: number, history: number[]}}
+  turnIndex Int      @default(0)
+  playerOrder String // JSON: [userId1, userId2, ...]
+  status    String   @default("playing") // playing, finished
+  winnerId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  party Party @relation(fields: [partyId], references: [id], onDelete: Cascade)
+
+  @@index([partyId])
+}
+
+model ActionLog {
+  id          String   @id @default(uuid())
+  partyId     String
+  userId      String
+  actionType  String   // "score_entry", "undo", "turn_end", "game_start", "game_reset"
+  actionData  String   // JSON payload
+  timestamp   DateTime @default(now())
+
+  // Relations
+  party Party @relation(fields: [partyId], references: [id], onDelete: Cascade)
+
+  @@index([partyId])
+  @@index([timestamp])
+}
