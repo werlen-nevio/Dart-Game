@@ -76,97 +76,117 @@
         Am Zug: {{ currentPlayer?.username || '...' }}
       </div>
 
-      <!-- Current Throw Display -->
-      <div class="current-throw-display">
-        <div class="current-throw-label">Aktueller Wurf</div>
-        <div class="current-throw-value">{{ party.currentThrow || 0 }}</div>
+      <!-- Current Shots Display -->
+      <div class="current-shots-display">
+        <div class="shot-box" v-for="(shot, index) in 3" :key="index">
+          <div class="shot-label">Wurf {{ index + 1 }}</div>
+          <div class="shot-value" :class="{ filled: party.currentShots && party.currentShots[index] !== undefined }">
+            {{ party.currentShots && party.currentShots[index] !== undefined ? party.currentShots[index] : '-' }}
+          </div>
+        </div>
+        <div class="shot-total">
+          <div class="shot-label">Total</div>
+          <div class="shot-value filled">
+            {{ party.currentShots ? party.currentShots.reduce((sum, shot) => sum + shot, 0) : 0 }}
+          </div>
+        </div>
       </div>
 
       <!-- Dartboard -->
       <div class="card">
-        <h3 style="margin-bottom: 16px;">Dartboard</h3>
+        <!-- Circular Dartboard -->
+        <div class="dartboard-circle">
+          <svg viewBox="0 0 500 500" class="dartboard-svg-circle">
+            <!-- Background -->
+            <circle cx="250" cy="250" r="245" fill="#1a1a1a" stroke="#333" stroke-width="3"/>
 
-        <!-- Dartboard Grid -->
-        <div class="dartboard">
-          <!-- Outer Ring (Numbers) -->
-          <div class="board-ring">
-            <div v-for="num in boardNumbers" :key="'num-' + num" class="board-number">
-              {{ num }}
-            </div>
-          </div>
+            <!-- Segments -->
+            <g v-for="(num, index) in boardNumbers" :key="'seg-' + num">
+              <!-- Double Ring (outer) -->
+              <path
+                :d="getSegmentPath(index, 225, 240)"
+                :fill="getRingColor(index, 'double')"
+                stroke="#000"
+                stroke-width="1"
+                @click="handleRingClick(num, 2)"
+                :class="['dartboard-segment', { disabled: !isCurrentPlayer }]"
+              />
 
-          <!-- Main Board -->
-          <div class="board-main">
-            <!-- Single Sections -->
-            <div class="board-sections">
-              <button
-                v-for="num in boardNumbers"
-                :key="'single-' + num"
-                @click="addThrow(num)"
-                :disabled="!isCurrentPlayer"
-                class="board-section single"
-                :class="getBoardColor(num)"
+              <!-- Single Outer -->
+              <path
+                :d="getSegmentPath(index, 145, 225)"
+                :fill="getSingleColor(index)"
+                stroke="#000"
+                stroke-width="0.5"
+                @click="handleRingClick(num, 1)"
+                :class="['dartboard-segment', { disabled: !isCurrentPlayer }]"
+              />
+
+              <!-- Triple Ring -->
+              <path
+                :d="getSegmentPath(index, 130, 145)"
+                :fill="getRingColor(index, 'triple')"
+                stroke="#000"
+                stroke-width="1"
+                @click="handleRingClick(num, 3)"
+                :class="['dartboard-segment', { disabled: !isCurrentPlayer }]"
+              />
+
+              <!-- Single Inner -->
+              <path
+                :d="getSegmentPath(index, 40, 130)"
+                :fill="getSingleColor(index)"
+                stroke="#000"
+                stroke-width="0.5"
+                @click="handleRingClick(num, 1)"
+                :class="['dartboard-segment', { disabled: !isCurrentPlayer }]"
+              />
+
+              <!-- Number labels -->
+              <text
+                :x="getNumberPos(index).x"
+                :y="getNumberPos(index).y"
+                class="segment-label"
+                text-anchor="middle"
+                dominant-baseline="middle"
               >
                 {{ num }}
-              </button>
-            </div>
+              </text>
+            </g>
 
-            <!-- Double Ring -->
-            <div class="board-ring-inner double-ring">
-              <button
-                v-for="num in boardNumbers"
-                :key="'double-' + num"
-                @click="addThrow(num * 2)"
-                :disabled="!isCurrentPlayer"
-                class="board-section-small double"
-                :class="getBoardColor(num)"
-              >
-                D{{ num }}
-              </button>
-            </div>
+            <!-- Outer Bull (25) -->
+            <circle
+              cx="250"
+              cy="250"
+              r="40"
+              fill="#2e7d32"
+              stroke="#000"
+              stroke-width="2"
+              @click="handleBullClick(25)"
+              :class="['dartboard-segment', { disabled: !isCurrentPlayer }]"
+            />
 
-            <!-- Triple Ring -->
-            <div class="board-ring-inner triple-ring">
-              <button
-                v-for="num in boardNumbers"
-                :key="'triple-' + num"
-                @click="addThrow(num * 3)"
-                :disabled="!isCurrentPlayer"
-                class="board-section-small triple"
-                :class="getBoardColor(num)"
-              >
-                T{{ num }}
-              </button>
-            </div>
-
-            <!-- Bull's Eye -->
-            <div class="bulls-eye-container">
-              <button
-                @click="addThrow(50)"
-                :disabled="!isCurrentPlayer"
-                class="bulls-eye bullseye"
-              >
-                50
-              </button>
-              <button
-                @click="addThrow(25)"
-                :disabled="!isCurrentPlayer"
-                class="bulls-eye single-bull"
-              >
-                25
-              </button>
-            </div>
-          </div>
+            <!-- Bull (50) -->
+            <circle
+              cx="250"
+              cy="250"
+              r="16"
+              fill="#c62828"
+              stroke="#000"
+              stroke-width="2"
+              @click="handleBullClick(50)"
+              :class="['dartboard-segment', { disabled: !isCurrentPlayer }]"
+            />
+          </svg>
         </div>
 
         <!-- Control Buttons -->
-        <div class="grid grid-3" style="margin-top: 20px;">
-          <button @click="clearThrow" :disabled="!isCurrentPlayer" class="danger">Clear</button>
-          <button @click="submitThrow" :disabled="!isCurrentPlayer" class="success">Submit</button>
-          <button @click="nextPlayer" :disabled="!isCurrentPlayer" class="secondary">Next Player</button>
+        <div class="control-btns">
+          <button @click="clearThrow" :disabled="!isCurrentPlayer" class="ctrl-btn clear-btn">Clear</button>
+          <button @click="submitThrow" :disabled="!isCurrentPlayer" class="ctrl-btn submit-btn">Submit</button>
         </div>
 
-        <button @click="undo" class="secondary" style="margin-top: 12px; width: 100%;">
+        <button @click="undo" class="ctrl-btn undo-btn" style="width: 100%;">
           Undo
         </button>
       </div>
@@ -234,7 +254,7 @@ const message = ref(null);
 const showDoubleModal = ref(false);
 const winner = ref(null);
 
-// Dartboard numbers in standard order
+// Dartboard numbers in standard order (clockwise from top)
 const boardNumbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 
 // Computed
@@ -267,7 +287,13 @@ function joinParty() {
   socket.emit('party:join', joinCode.value.trim().toUpperCase());
 }
 
-function addThrow(value) {
+function handleRingClick(num, ringMultiplier) {
+  if (!isCurrentPlayer.value) return;
+  socket.emit('game:add_throw', num * ringMultiplier);
+}
+
+function handleBullClick(value) {
+  if (!isCurrentPlayer.value) return;
   socket.emit('game:add_throw', value);
 }
 
@@ -275,9 +301,49 @@ function clearThrow() {
   socket.emit('game:clear_throw');
 }
 
+function getSegmentPath(index, innerRadius, outerRadius) {
+  const anglePerSegment = (2 * Math.PI) / 20;
+  const startAngle = index * anglePerSegment - Math.PI / 2 - anglePerSegment / 2;
+  const endAngle = startAngle + anglePerSegment;
+  const centerX = 250;
+  const centerY = 250;
+
+  const x1 = centerX + innerRadius * Math.cos(startAngle);
+  const y1 = centerY + innerRadius * Math.sin(startAngle);
+  const x2 = centerX + outerRadius * Math.cos(startAngle);
+  const y2 = centerY + outerRadius * Math.sin(startAngle);
+  const x3 = centerX + outerRadius * Math.cos(endAngle);
+  const y3 = centerY + outerRadius * Math.sin(endAngle);
+  const x4 = centerX + innerRadius * Math.cos(endAngle);
+  const y4 = centerY + innerRadius * Math.sin(endAngle);
+
+  return `M ${x1} ${y1} L ${x2} ${y2} A ${outerRadius} ${outerRadius} 0 0 1 ${x3} ${y3} L ${x4} ${y4} A ${innerRadius} ${innerRadius} 0 0 0 ${x1} ${y1} Z`;
+}
+
+function getNumberPos(index) {
+  const anglePerSegment = (2 * Math.PI) / 20;
+  const angle = index * anglePerSegment - Math.PI / 2;
+  const radius = 260;
+
+  return {
+    x: 250 + radius * Math.cos(angle),
+    y: 250 + radius * Math.sin(angle)
+  };
+}
+
+function getSingleColor(index) {
+  // Alternating black and beige/white for single areas
+  return index % 2 === 0 ? '#1a1a1a' : '#f5f5dc';
+}
+
+function getRingColor(index, ring) {
+  // Double and Triple rings: alternating red and green (like single areas)
+  return index % 2 === 0 ? '#c62828' : '#2e7d32';
+}
+
 function submitThrow() {
   const currentPlayerObj = currentPlayer.value;
-  const throwValue = party.value.currentThrow || 0;
+  const throwValue = party.value.currentShots ? party.value.currentShots.reduce((sum, shot) => sum + shot, 0) : 0;
   const newScore = currentPlayerObj.score - throwValue;
 
   // Check if it would be exactly 0 and double-out is required
@@ -306,12 +372,6 @@ function showMessage(text, type = 'info') {
   setTimeout(() => {
     message.value = null;
   }, 3000);
-}
-
-function getBoardColor(num) {
-  // Dartboard coloring: alternating red and green/black
-  const redNumbers = [1, 4, 6, 10, 13, 15, 3, 17, 19, 9];
-  return redNumbers.includes(num) ? 'red' : 'green';
 }
 
 // Socket Listeners

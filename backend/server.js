@@ -36,6 +36,66 @@ function broadcastPartyState(partyCode) {
   io.to(partyCode).emit('party:state', party);
 }
 
+// Helper: Handle Submit Throw
+function handleSubmitThrow(partyCode, socketId, doubleHit) {
+  const party = parties.get(partyCode);
+  if (!party) return;
+
+  const currentPlayer = party.players[party.currentPlayerIndex];
+  const throwValue = party.currentShots.reduce((sum, shot) => sum + shot, 0);
+  const newScore = currentPlayer.score - throwValue;
+
+  // Bust check
+  if (newScore < 0) {
+    io.to(socketId).emit('game:bust', 'Bust! Score would be negative.');
+    party.currentShots = [];
+    party.currentPlayerIndex = (party.currentPlayerIndex + 1) % party.players.length;
+    broadcastPartyState(partyCode);
+    return;
+  }
+
+  // Win check
+  if (newScore === 0) {
+    if (party.outMode === 'double' && !doubleHit) {
+      io.to(socketId).emit('game:double_required', 'Double-Out required!');
+      party.currentShots = [];
+      party.currentPlayerIndex = (party.currentPlayerIndex + 1) % party.players.length;
+      broadcastPartyState(partyCode);
+      return;
+    }
+
+    // Winner!
+    currentPlayer.score = 0;
+    party.history.push({
+      player: currentPlayer.username,
+      shots: [...party.currentShots],
+      throw: throwValue,
+      newScore: 0,
+      timestamp: Date.now()
+    });
+    party.currentShots = [];
+    io.to(partyCode).emit('game:winner', currentPlayer.username);
+    broadcastPartyState(partyCode);
+    return;
+  }
+
+  // Normal throw
+  currentPlayer.score = newScore;
+  party.history.push({
+    player: currentPlayer.username,
+    shots: [...party.currentShots],
+    throw: throwValue,
+    newScore,
+    timestamp: Date.now()
+  });
+  party.currentShots = [];
+
+  // Auto-advance to next player
+  party.currentPlayerIndex = (party.currentPlayerIndex + 1) % party.players.length;
+
+  broadcastPartyState(partyCode);
+}
+
 // Socket.IO Events
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
@@ -66,7 +126,7 @@ io.on('connection', (socket) => {
         socketId: socket.id
       }],
       currentPlayerIndex: 0,
-      currentThrow: 0,
+      currentShots: [],
       history: []
     };
 
@@ -117,7 +177,29 @@ io.on('connection', (socket) => {
     const party = parties.get(user.partyCode);
     if (!party) return;
 
-    party.currentThrow = (party.currentThrow || 0) + value;
+    const currentPlayer = party.players[party.currentPlayerIndex];
+
+    // Check if the user is the current player
+    if (currentPlayer.username !== user.username) {
+      socket.emit('error', 'Du bist nicht am Zug!');
+      return;
+    }
+
+    // Check if max shots reached
+    if (party.currentShots.length >= 3) {
+      socket.emit('error', 'Maximal 3 Würfe pro Runde!');
+      return;
+    }
+
+    party.currentShots.push(value);
+
+    // Auto-submit after 3 shots
+    if (party.currentShots.length === 3) {
+      setTimeout(() => {
+        handleSubmitThrow(user.partyCode, socket.id, false);
+      }, 500);
+    }
+
     broadcastPartyState(user.partyCode);
   });
 
@@ -129,7 +211,7 @@ io.on('connection', (socket) => {
     const party = parties.get(user.partyCode);
     if (!party) return;
 
-    party.currentThrow = 0;
+    party.currentShots = [];
     broadcastPartyState(user.partyCode);
   });
 
@@ -148,50 +230,14 @@ io.on('connection', (socket) => {
       socket.emit('error', 'Du bist nicht am Zug!');
       return;
     }
-    const throwValue = party.currentThrow || 0;
-    const newScore = currentPlayer.score - throwValue;
 
-    // Bust check
-    if (newScore < 0) {
-      socket.emit('game:bust', 'Bust! Score would be negative.');
-      party.currentThrow = 0;
-      broadcastPartyState(user.partyCode);
+    // Don't submit if no shots
+    if (party.currentShots.length === 0) {
+      socket.emit('error', 'Keine Würfe zum Absenden!');
       return;
     }
 
-    // Win check
-    if (newScore === 0) {
-      if (party.outMode === 'double' && !doubleHit) {
-        socket.emit('game:double_required', 'Double-Out required!');
-        party.currentThrow = 0;
-        broadcastPartyState(user.partyCode);
-        return;
-      }
-
-      // Winner!
-      currentPlayer.score = 0;
-      party.currentThrow = 0;
-      party.history.push({
-        player: currentPlayer.username,
-        throw: throwValue,
-        newScore: 0,
-        timestamp: Date.now()
-      });
-      io.to(user.partyCode).emit('game:winner', currentPlayer.username);
-      broadcastPartyState(user.partyCode);
-      return;
-    }
-
-    // Normal throw
-    currentPlayer.score = newScore;
-    party.history.push({
-      player: currentPlayer.username,
-      throw: throwValue,
-      newScore,
-      timestamp: Date.now()
-    });
-    party.currentThrow = 0;
-    broadcastPartyState(user.partyCode);
+    handleSubmitThrow(user.partyCode, socket.id, doubleHit);
   });
 
   // Next Player
@@ -211,7 +257,7 @@ io.on('connection', (socket) => {
     }
 
     party.currentPlayerIndex = (party.currentPlayerIndex + 1) % party.players.length;
-    party.currentThrow = 0;
+    party.currentShots = [];
     broadcastPartyState(user.partyCode);
   });
 
