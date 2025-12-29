@@ -1,7 +1,5 @@
 <template>
   <div id="app">
-    <h1>🎯 Dart Online</h1>
-
     <!-- Login Screen -->
     <div v-if="!user" class="card">
       <h2>Login</h2>
@@ -42,7 +40,7 @@
         </div>
         <button @click="createParty">Party erstellen</button>
 
-        <hr style="margin: 32px 0; border: 1px solid #444;" />
+        <hr class="divider" />
 
         <h3 style="margin-bottom: 12px;">Party beitreten</h3>
         <div class="form-group">
@@ -78,7 +76,13 @@
 
       <!-- Current Shots Display -->
       <div class="current-shots-display">
-        <div class="shot-box" v-for="(shot, index) in 3" :key="index">
+        <div
+          class="shot-box"
+          v-for="(shot, index) in 3"
+          :key="index"
+          :class="{ clickable: isCurrentPlayer && party.currentShots && party.currentShots[index] !== undefined }"
+          @click="removeShot(index)"
+        >
           <div class="shot-label">Wurf {{ index + 1 }}</div>
           <div class="shot-value" :class="{ filled: party.currentShots && party.currentShots[index] !== undefined }">
             {{ party.currentShots && party.currentShots[index] !== undefined ? party.currentShots[index].value : '-' }}
@@ -194,13 +198,9 @@
 
         <!-- Control Buttons -->
         <div class="control-btns">
-          <button @click="clearThrow" :disabled="!isCurrentPlayer" class="ctrl-btn clear-btn">Clear</button>
-          <button @click="submitThrow" :disabled="!isCurrentPlayer" class="ctrl-btn submit-btn">Submit</button>
+          <button @click="addMiss" :disabled="!isCurrentPlayer || (party.currentShots && party.currentShots.length >= 3)" class="ctrl-btn miss-btn">Miss</button>
+          <button @click="submitThrow" :disabled="!isCurrentPlayer" class="ctrl-btn submit-btn">Next Player</button>
         </div>
-
-        <button @click="undo" class="ctrl-btn undo-btn" style="width: 100%;">
-          Undo
-        </button>
       </div>
 
       <!-- Players -->
@@ -233,7 +233,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onUnmounted } from 'vue';
 import { io } from 'socket.io-client';
 
 const socket = io('http://localhost:3000');
@@ -305,8 +305,19 @@ function handleBullClick(value) {
   });
 }
 
-function clearThrow() {
-  socket.emit('game:clear_throw');
+function addMiss() {
+  if (!isCurrentPlayer.value) return;
+  socket.emit('game:add_throw', {
+    value: 0,
+    multiplier: 0,
+    baseNumber: 0
+  });
+}
+
+function removeShot(index) {
+  if (!isCurrentPlayer.value) return;
+  if (!party.value.currentShots || party.value.currentShots[index] === undefined) return;
+  socket.emit('game:remove_shot', index);
 }
 
 function getSegmentPath(index, innerRadius, outerRadius) {
@@ -344,21 +355,13 @@ function getSingleColor(index) {
   return index % 2 === 0 ? '#1a1a1a' : '#f5f5dc';
 }
 
-function getRingColor(index, ring) {
-  // Double and Triple rings: alternating red and green (like single areas)
+function getRingColor(index) {
+  // Double and Triple rings: alternating red and green
   return index % 2 === 0 ? '#c62828' : '#2e7d32';
 }
 
 function submitThrow() {
   socket.emit('game:submit_throw');
-}
-
-function nextPlayer() {
-  socket.emit('game:next_player');
-}
-
-function undo() {
-  socket.emit('game:undo');
 }
 
 function showMessage(text, type = 'info') {

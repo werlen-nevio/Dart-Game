@@ -238,28 +238,30 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Auto-submit after 3 shots (if not bust or win)
-    if (party.currentShots.length === 3) {
-      setTimeout(() => {
-        const currentParty = parties.get(user.partyCode);
-        if (currentParty && currentParty.currentShots.length === 3) {
-          handleSubmitThrow(user.partyCode);
-        }
-      }, 500);
-    }
-
     broadcastPartyState(user.partyCode);
   });
 
-  // Clear Current Throw
-  socket.on('game:clear_throw', () => {
+  // Remove Shot
+  socket.on('game:remove_shot', (index) => {
     const user = users.get(socket.id);
     if (!user || !user.partyCode) return;
 
     const party = parties.get(user.partyCode);
     if (!party) return;
 
-    party.currentShots = [];
+    const currentPlayer = party.players[party.currentPlayerIndex];
+
+    // Check if the user is the current player
+    if (currentPlayer.username !== user.username) {
+      socket.emit('error', 'Du bist nicht am Zug!');
+      return;
+    }
+
+    // Remove shot at index
+    if (index >= 0 && index < party.currentShots.length) {
+      party.currentShots.splice(index, 1);
+    }
+
     broadcastPartyState(user.partyCode);
   });
 
@@ -279,52 +281,16 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Don't submit if no shots
-    if (party.currentShots.length === 0) {
-      socket.emit('error', 'Keine Würfe zum Absenden!');
-      return;
+    // Allow submit even with 0 shots (skip turn)
+    if (party.currentShots.length > 0) {
+      handleSubmitThrow(user.partyCode);
+    } else {
+      // Just skip to next player
+      party.currentPlayerIndex = (party.currentPlayerIndex + 1) % party.players.length;
+      broadcastPartyState(user.partyCode);
     }
-
-    handleSubmitThrow(user.partyCode);
   });
 
-  // Next Player
-  socket.on('game:next_player', () => {
-    const user = users.get(socket.id);
-    if (!user || !user.partyCode) return;
-
-    const party = parties.get(user.partyCode);
-    if (!party) return;
-
-    const currentPlayer = party.players[party.currentPlayerIndex];
-
-    // Check if the user is the current player
-    if (currentPlayer.username !== user.username) {
-      socket.emit('error', 'Du bist nicht am Zug!');
-      return;
-    }
-
-    party.currentPlayerIndex = (party.currentPlayerIndex + 1) % party.players.length;
-    party.currentShots = [];
-    broadcastPartyState(user.partyCode);
-  });
-
-  // Undo Last Throw
-  socket.on('game:undo', () => {
-    const user = users.get(socket.id);
-    if (!user || !user.partyCode) return;
-
-    const party = parties.get(user.partyCode);
-    if (!party || party.history.length === 0) return;
-
-    const lastEntry = party.history.pop();
-    const player = party.players.find(p => p.username === lastEntry.player);
-    if (player) {
-      player.score = lastEntry.newScore + lastEntry.throw;
-    }
-
-    broadcastPartyState(user.partyCode);
-  });
 
   // Disconnect
   socket.on('disconnect', () => {
