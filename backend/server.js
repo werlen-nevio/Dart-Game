@@ -37,47 +37,16 @@ function broadcastPartyState(partyCode) {
 }
 
 // Helper: Handle Submit Throw
-function handleSubmitThrow(partyCode, socketId, doubleHit) {
+function handleSubmitThrow(partyCode) {
   const party = parties.get(partyCode);
   if (!party) return;
 
   const currentPlayer = party.players[party.currentPlayerIndex];
-  const throwValue = party.currentShots.reduce((sum, shot) => sum + shot, 0);
+  const throwValue = party.currentShots.reduce((sum, s) => sum + s.value, 0);
   const newScore = currentPlayer.score - throwValue;
 
-  // Bust check
-  if (newScore < 0) {
-    io.to(socketId).emit('game:bust', 'Bust! Score would be negative.');
-    party.currentShots = [];
-    party.currentPlayerIndex = (party.currentPlayerIndex + 1) % party.players.length;
-    broadcastPartyState(partyCode);
-    return;
-  }
-
-  // Win check
-  if (newScore === 0) {
-    if (party.outMode === 'double' && !doubleHit) {
-      io.to(socketId).emit('game:double_required', 'Double-Out required!');
-      party.currentShots = [];
-      party.currentPlayerIndex = (party.currentPlayerIndex + 1) % party.players.length;
-      broadcastPartyState(partyCode);
-      return;
-    }
-
-    // Winner!
-    currentPlayer.score = 0;
-    party.history.push({
-      player: currentPlayer.username,
-      shots: [...party.currentShots],
-      throw: throwValue,
-      newScore: 0,
-      timestamp: Date.now()
-    });
-    party.currentShots = [];
-    io.to(partyCode).emit('game:winner', currentPlayer.username);
-    broadcastPartyState(partyCode);
-    return;
-  }
+  // Note: Bust and win checks are already handled in game:add_throw
+  // This function is only called for normal score updates after 3 shots
 
   // Normal throw
   currentPlayer.score = newScore;
@@ -170,7 +139,7 @@ io.on('connection', (socket) => {
   });
 
   // Add to Current Throw
-  socket.on('game:add_throw', (value) => {
+  socket.on('game:add_throw', (shotData) => {
     const user = users.get(socket.id);
     if (!user || !user.partyCode) return;
 
@@ -191,12 +160,91 @@ io.on('connection', (socket) => {
       return;
     }
 
-    party.currentShots.push(value);
+    // Store shot with metadata
+    const shot = {
+      value: shotData.value,
+      multiplier: shotData.multiplier,
+      baseNumber: shotData.baseNumber
+    };
 
-    // Auto-submit after 3 shots
+    party.currentShots.push(shot);
+
+    // Calculate current total
+    const throwValue = party.currentShots.reduce((sum, s) => sum + s.value, 0);
+    const newScore = currentPlayer.score - throwValue;
+
+    // Bust check - end turn immediately
+    if (newScore < 0) {
+      socket.emit('game:bust', 'Bust! Score would be negative.');
+      party.currentShots = [];
+      party.currentPlayerIndex = (party.currentPlayerIndex + 1) % party.players.length;
+      broadcastPartyState(user.partyCode);
+      return;
+    }
+
+    // Double-out specific: Score of 1 is impossible to checkout
+    if (party.outMode === 'double' && newScore === 1) {
+      socket.emit('game:bust', 'Bust! Score of 1 cannot be checked out.');
+      party.currentShots = [];
+      party.currentPlayerIndex = (party.currentPlayerIndex + 1) % party.players.length;
+      broadcastPartyState(user.partyCode);
+      return;
+    }
+
+    // Win check - if exactly 0
+    if (newScore === 0) {
+      // Check if last dart was actually thrown on the double ring
+      const lastShot = shot;
+      const isDouble = lastShot.multiplier === 2;
+
+      if (party.outMode === 'double') {
+        // Double-out: must finish with a double
+        if (isDouble) {
+          // Valid double-out win
+          currentPlayer.score = 0;
+          party.history.push({
+            player: currentPlayer.username,
+            shots: [...party.currentShots],
+            throw: throwValue,
+            newScore: 0,
+            timestamp: Date.now()
+          });
+          party.currentShots = [];
+          io.to(user.partyCode).emit('game:winner', currentPlayer.username);
+          broadcastPartyState(user.partyCode);
+          return;
+        } else {
+          // Not a double - bust
+          socket.emit('game:double_required', 'Double-Out required! Must finish with a double.');
+          party.currentShots = [];
+          party.currentPlayerIndex = (party.currentPlayerIndex + 1) % party.players.length;
+          broadcastPartyState(user.partyCode);
+          return;
+        }
+      } else {
+        // Single out - immediate win
+        currentPlayer.score = 0;
+        party.history.push({
+          player: currentPlayer.username,
+          shots: [...party.currentShots],
+          throw: throwValue,
+          newScore: 0,
+          timestamp: Date.now()
+        });
+        party.currentShots = [];
+        io.to(user.partyCode).emit('game:winner', currentPlayer.username);
+        broadcastPartyState(user.partyCode);
+        return;
+      }
+    }
+
+    // Auto-submit after 3 shots (if not bust or win)
     if (party.currentShots.length === 3) {
       setTimeout(() => {
-        handleSubmitThrow(user.partyCode, socket.id, false);
+        const currentParty = parties.get(user.partyCode);
+        if (currentParty && currentParty.currentShots.length === 3) {
+          handleSubmitThrow(user.partyCode);
+        }
       }, 500);
     }
 
@@ -216,7 +264,7 @@ io.on('connection', (socket) => {
   });
 
   // Submit Throw
-  socket.on('game:submit_throw', ({ doubleHit }) => {
+  socket.on('game:submit_throw', () => {
     const user = users.get(socket.id);
     if (!user || !user.partyCode) return;
 
@@ -237,7 +285,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    handleSubmitThrow(user.partyCode, socket.id, doubleHit);
+    handleSubmitThrow(user.partyCode);
   });
 
   // Next Player

@@ -81,13 +81,13 @@
         <div class="shot-box" v-for="(shot, index) in 3" :key="index">
           <div class="shot-label">Wurf {{ index + 1 }}</div>
           <div class="shot-value" :class="{ filled: party.currentShots && party.currentShots[index] !== undefined }">
-            {{ party.currentShots && party.currentShots[index] !== undefined ? party.currentShots[index] : '-' }}
+            {{ party.currentShots && party.currentShots[index] !== undefined ? party.currentShots[index].value : '-' }}
           </div>
         </div>
         <div class="shot-total">
           <div class="shot-label">Total</div>
           <div class="shot-value filled">
-            {{ party.currentShots ? party.currentShots.reduce((sum, shot) => sum + shot, 0) : 0 }}
+            {{ party.currentShots ? party.currentShots.reduce((sum, shot) => sum + shot.value, 0) : 0 }}
           </div>
         </div>
       </div>
@@ -207,20 +207,6 @@
       </div>
     </div>
 
-    <!-- Double-Out Modal -->
-    <div v-if="showDoubleModal" class="modal-overlay">
-      <div class="modal">
-        <h3>Double getroffen?</h3>
-        <p style="color: #ccc; margin-bottom: 20px;">
-          Du brauchst ein Double für den Win!
-        </p>
-        <div class="modal-buttons">
-          <button @click="confirmDouble(false)" class="secondary">Nein</button>
-          <button @click="confirmDouble(true)" class="success">Ja</button>
-        </div>
-      </div>
-    </div>
-
     <!-- Winner Modal -->
     <div v-if="winner" class="modal-overlay">
       <div class="modal">
@@ -251,7 +237,6 @@ const createForm = ref({
   outMode: 'double'
 });
 const message = ref(null);
-const showDoubleModal = ref(false);
 const winner = ref(null);
 
 // Dartboard numbers in standard order (clockwise from top)
@@ -289,12 +274,22 @@ function joinParty() {
 
 function handleRingClick(num, ringMultiplier) {
   if (!isCurrentPlayer.value) return;
-  socket.emit('game:add_throw', num * ringMultiplier);
+  socket.emit('game:add_throw', {
+    value: num * ringMultiplier,
+    multiplier: ringMultiplier,
+    baseNumber: num
+  });
 }
 
 function handleBullClick(value) {
   if (!isCurrentPlayer.value) return;
-  socket.emit('game:add_throw', value);
+  // Bull (50) and outer bull (25)
+  const isDoubleBull = value === 50;
+  socket.emit('game:add_throw', {
+    value: value,
+    multiplier: isDoubleBull ? 2 : 1,
+    baseNumber: isDoubleBull ? 25 : 25
+  });
 }
 
 function clearThrow() {
@@ -342,21 +337,7 @@ function getRingColor(index, ring) {
 }
 
 function submitThrow() {
-  const currentPlayerObj = currentPlayer.value;
-  const throwValue = party.value.currentShots ? party.value.currentShots.reduce((sum, shot) => sum + shot, 0) : 0;
-  const newScore = currentPlayerObj.score - throwValue;
-
-  // Check if it would be exactly 0 and double-out is required
-  if (newScore === 0 && party.value.outMode === 'double') {
-    showDoubleModal.value = true;
-  } else {
-    socket.emit('game:submit_throw', { doubleHit: false });
-  }
-}
-
-function confirmDouble(hit) {
-  showDoubleModal.value = false;
-  socket.emit('game:submit_throw', { doubleHit: hit });
+  socket.emit('game:submit_throw');
 }
 
 function nextPlayer() {
