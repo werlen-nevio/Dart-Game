@@ -110,6 +110,7 @@ h2 {
   padding: 24px;
   margin-bottom: 20px;
   border: 2px solid #333;
+  position: relative;
 }
 
 .form-group {
@@ -314,11 +315,109 @@ h2 {
   flex: 1;
 }
 
+/* Dartboard Overlay Messages */
+.dartboard-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.85);
+  border-radius: 12px;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-10px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(10px);
+  }
+}
+
+.dartboard-message {
+  text-align: center;
+  padding: 40px 50px;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-radius: 20px;
+  border: 3px solid;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  max-width: 400px;
+}
+
+.dartboard-message.bust {
+  border-color: #e74c3c;
+  box-shadow: 0 20px 60px rgba(231, 76, 60, 0.4), 0 0 30px rgba(231, 76, 60, 0.3);
+  animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), shake 0.5s 0.5s;
+}
+
+.dartboard-message.double-required {
+  border-color: #f39c12;
+  box-shadow: 0 20px 60px rgba(243, 156, 18, 0.4), 0 0 30px rgba(243, 156, 18, 0.3);
+}
+
+.dartboard-message.error {
+  border-color: #e74c3c;
+  box-shadow: 0 20px 60px rgba(231, 76, 60, 0.4), 0 0 30px rgba(231, 76, 60, 0.3);
+}
+
+.dartboard-message-icon {
+  font-size: 5rem;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.dartboard-message-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f0f0f0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  line-height: 1.4;
+}
+
 /* Dartboard Styles - Flat Design */
 .dartboard-circle {
   display: flex;
   justify-content: center;
   margin-bottom: 20px;
+  position: relative;
 }
 
 .dartboard-svg-circle {
@@ -342,12 +441,16 @@ h2 {
 }
 
 .segment-label {
-  fill: #f0f0f0;
-  font-size: 18px;
-  font-weight: 700;
+  fill: #ffffff;
+  font-size: 24px;
+  font-weight: 900;
   pointer-events: none;
   -webkit-user-select: none;
   user-select: none;
+  paint-order: stroke fill;
+  stroke: #000000;
+  stroke-width: 2px;
+  letter-spacing: 1px;
 }
 
 .segment-label.disabled {
@@ -419,7 +522,8 @@ button:disabled:hover {
   }
 
   .segment-label {
-    font-size: 16px;
+    font-size: 20px;
+    stroke-width: 1.5px;
   }
 
   .ctrl-btn {

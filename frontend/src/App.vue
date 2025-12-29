@@ -94,11 +94,23 @@
 
       <!-- Dartboard -->
       <div class="card">
+        <!-- Dartboard Overlay Messages -->
+        <div v-if="dartboardMessage" class="dartboard-overlay">
+          <div :class="['dartboard-message', dartboardMessage.type]">
+            <div class="dartboard-message-icon">
+              <span v-if="dartboardMessage.type === 'bust'">💥</span>
+              <span v-else-if="dartboardMessage.type === 'double-required'">🎯</span>
+              <span v-else>⚠️</span>
+            </div>
+            <div class="dartboard-message-text">{{ dartboardMessage.text }}</div>
+          </div>
+        </div>
+
         <!-- Circular Dartboard -->
         <div class="dartboard-circle">
-          <svg viewBox="0 0 500 500" class="dartboard-svg-circle">
+          <svg viewBox="0 0 600 600" class="dartboard-svg-circle">
             <!-- Background -->
-            <circle cx="250" cy="250" r="245" fill="#1a1a1a" stroke="#333" stroke-width="3"/>
+            <circle cx="300" cy="300" r="285" fill="#1a1a1a" stroke="#333" stroke-width="3"/>
 
             <!-- Segments -->
             <g v-for="(num, index) in boardNumbers" :key="'seg-' + num">
@@ -156,8 +168,8 @@
 
             <!-- Outer Bull (25) -->
             <circle
-              cx="250"
-              cy="250"
+              cx="300"
+              cy="300"
               r="40"
               fill="#2e7d32"
               stroke="#000"
@@ -168,8 +180,8 @@
 
             <!-- Bull (50) -->
             <circle
-              cx="250"
-              cy="250"
+              cx="300"
+              cy="300"
               r="16"
               fill="#c62828"
               stroke="#000"
@@ -237,6 +249,7 @@ const createForm = ref({
   outMode: 'double'
 });
 const message = ref(null);
+const dartboardMessage = ref(null);
 const winner = ref(null);
 
 // Dartboard numbers in standard order (clockwise from top)
@@ -300,8 +313,8 @@ function getSegmentPath(index, innerRadius, outerRadius) {
   const anglePerSegment = (2 * Math.PI) / 20;
   const startAngle = index * anglePerSegment - Math.PI / 2 - anglePerSegment / 2;
   const endAngle = startAngle + anglePerSegment;
-  const centerX = 250;
-  const centerY = 250;
+  const centerX = 300;
+  const centerY = 300;
 
   const x1 = centerX + innerRadius * Math.cos(startAngle);
   const y1 = centerY + innerRadius * Math.sin(startAngle);
@@ -318,11 +331,11 @@ function getSegmentPath(index, innerRadius, outerRadius) {
 function getNumberPos(index) {
   const anglePerSegment = (2 * Math.PI) / 20;
   const angle = index * anglePerSegment - Math.PI / 2;
-  const radius = 260;
+  const radius = 262;
 
   return {
-    x: 250 + radius * Math.cos(angle),
-    y: 250 + radius * Math.sin(angle)
+    x: 300 + radius * Math.cos(angle),
+    y: 300 + radius * Math.sin(angle)
   };
 }
 
@@ -355,6 +368,13 @@ function showMessage(text, type = 'info') {
   }, 3000);
 }
 
+function showDartboardMessage(text, type = 'error') {
+  dartboardMessage.value = { text, type };
+  setTimeout(() => {
+    dartboardMessage.value = null;
+  }, 2000);
+}
+
 // Socket Listeners
 socket.on('user:logged_in', (data) => {
   user.value = data.username;
@@ -373,11 +393,11 @@ socket.on('party:state', (data) => {
 });
 
 socket.on('game:bust', (msg) => {
-  showMessage(msg, 'error');
+  showDartboardMessage(msg, 'bust');
 });
 
 socket.on('game:double_required', (msg) => {
-  showMessage(msg, 'error');
+  showDartboardMessage(msg, 'double-required');
 });
 
 socket.on('game:winner', (username) => {
