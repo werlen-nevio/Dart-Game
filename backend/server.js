@@ -178,6 +178,7 @@ const io = new Server(httpServer, {
 // In-Memory Store for game state
 const parties = new Map(); // partyCode -> Party
 const socketUsers = new Map();   // socketId -> { username, partyCode, userId }
+const disconnectTimers = new Map(); // socketId -> timeout
 
 // Helper: Generate Party Code
 function generatePartyCode() {
@@ -299,6 +300,12 @@ io.on('connection', (socket) => {
       // Reconnect: update socketId and profile picture
       existing.socketId = socket.id;
       existing.profilePicture = user.profilePicture;
+
+      // Cancel disconnect timer if exists
+      if (disconnectTimers.has(socket.id)) {
+        clearTimeout(disconnectTimers.get(socket.id));
+        disconnectTimers.delete(socket.id);
+      }
     }
 
     user.partyCode = code;
@@ -462,10 +469,96 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Restart Game
+  socket.on('game:restart', () => {
+    const user = socketUsers.get(socket.id);
+    if (!user || !user.partyCode) return;
+
+    const party = parties.get(user.partyCode);
+    if (!party) return;
+
+    // Reset all players to starting score
+    const startScore = party.mode === '301' ? 301 : 501;
+    party.players.forEach(player => {
+      player.score = startScore;
+    });
+
+    // Reset game state
+    party.currentPlayerIndex = 0;
+    party.currentShots = [];
+    party.history = [];
+
+    broadcastPartyState(user.partyCode);
+    console.log(`Game restarted in party ${user.partyCode}`);
+  });
+
+  // Leave Party
+  socket.on('party:leave', () => {
+    const user = socketUsers.get(socket.id);
+    if (!user || !user.partyCode) return;
+
+    const party = parties.get(user.partyCode);
+    if (!party) return;
+
+    // Remove player from party
+    party.players = party.players.filter(p => p.username !== user.username);
+
+    // If no players left, delete party
+    if (party.players.length === 0) {
+      parties.delete(user.partyCode);
+      console.log(`Party ${user.partyCode} deleted (no players)`);
+    } else {
+      // Adjust current player index if needed
+      if (party.currentPlayerIndex >= party.players.length) {
+        party.currentPlayerIndex = 0;
+      }
+      broadcastPartyState(user.partyCode);
+    }
+
+    socket.leave(user.partyCode);
+    user.partyCode = null;
+  });
+
   // Disconnect
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
-    socketUsers.delete(socket.id);
+
+    const user = socketUsers.get(socket.id);
+    if (user && user.partyCode) {
+      // Set a 20-second timer before removing from party
+      const timer = setTimeout(() => {
+        const party = parties.get(user.partyCode);
+        if (!party) {
+          socketUsers.delete(socket.id);
+          disconnectTimers.delete(socket.id);
+          return;
+        }
+
+        // Remove player from party
+        party.players = party.players.filter(p => p.socketId !== socket.id);
+
+        // If no players left, delete party
+        if (party.players.length === 0) {
+          parties.delete(user.partyCode);
+          console.log(`Party ${user.partyCode} deleted (all disconnected)`);
+        } else {
+          // Adjust current player index if needed
+          if (party.currentPlayerIndex >= party.players.length) {
+            party.currentPlayerIndex = 0;
+          }
+          broadcastPartyState(user.partyCode);
+        }
+
+        socketUsers.delete(socket.id);
+        disconnectTimers.delete(socket.id);
+        console.log(`User ${user.username} removed from party after 20s`);
+      }, 20000); // 20 seconds
+
+      disconnectTimers.set(socket.id, timer);
+      console.log(`User ${user.username} disconnected, 20s timer started`);
+    } else {
+      socketUsers.delete(socket.id);
+    }
   });
 });
 

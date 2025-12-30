@@ -34,8 +34,11 @@
     <!-- Play Game Menu -->
     <div v-else-if="currentView === 'playMenu'">
       <div class="card">
-        <button @click="currentView = 'home'" class="back-btn">← Zurück</button>
-        <h2 style="margin-bottom: 32px;">Spiel spielen</h2>
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 32px;">
+          <button @click="currentView = 'home'" class="back-btn">← Zurück</button>
+          <h2 style="margin: 0; flex: 1; text-align: center;">Spiel spielen</h2>
+          <div style="width: 108px;"></div>
+        </div>
 
         <div class="menu-buttons">
           <button @click="currentView = 'lobby'" class="menu-btn">Standard</button>
@@ -48,8 +51,11 @@
     <!-- Leaderboard Screen -->
     <div v-else-if="currentView === 'leaderboard'">
       <div class="card">
-        <button @click="currentView = 'home'" class="back-btn">← Zurück</button>
-        <h2 style="margin-bottom: 32px;">Leaderboard</h2>
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 32px;">
+          <button @click="currentView = 'home'" class="back-btn">← Zurück</button>
+          <h2 style="margin: 0; flex: 1; text-align: center;">Leaderboard</h2>
+          <div style="width: 108px;"></div>
+        </div>
         <p style="color: #8a8d8f; text-align: center;">Coming soon</p>
       </div>
     </div>
@@ -57,10 +63,13 @@
     <!-- Lobby Screen -->
     <div v-else-if="currentView === 'lobby' && !party">
       <div class="card">
-        <button @click="currentView = 'playMenu'" class="back-btn">← Zurück</button>
-        <h2 style="margin-bottom: 24px;">Standard Game</h2>
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+          <button @click="currentView = 'playMenu'" class="back-btn">← Zurück</button>
+          <h2 style="margin: 0; flex: 1; text-align: center;">Standard Game</h2>
+          <div style="width: 108px;"></div>
+        </div>
 
-        <h3 style="margin-top: 24px; margin-bottom: 12px;">Party erstellen</h3>
+        <h3 style="margin-bottom: 12px;">Party erstellen</h3>
         <div class="form-group">
           <label>Party Name</label>
           <input v-model="createForm.partyName" placeholder="Meine Dart Party" />
@@ -86,8 +95,11 @@
     <!-- Join Party Screen -->
     <div v-else-if="currentView === 'joinParty' && !party">
       <div class="card">
-        <button @click="currentView = 'playMenu'" class="back-btn">← Zurück</button>
-        <h2 style="margin-bottom: 24px;">Party beitreten</h2>
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+          <button @click="currentView = 'playMenu'" class="back-btn">← Zurück</button>
+          <h2 style="margin: 0; flex: 1; text-align: center;">Party beitreten</h2>
+          <div style="width: 108px;"></div>
+        </div>
 
         <div class="form-group">
           <label>Party Code</label>
@@ -104,21 +116,14 @@
 
     <!-- Party/Game Screen -->
     <div v-else>
-      <div class="party-header">
-        <button @click="leaveParty" class="back-btn" style="margin-bottom: 12px;">← Party verlassen</button>
-        <h2>{{ party.name }}</h2>
+      <div class="party-header-compact">
+        <button @click="leaveParty" class="back-btn">← Party verlassen</button>
         <div class="party-code">{{ party.code }}</div>
-        <p style="margin-top: 12px; color: #ccc;">
-          {{ party.mode }} • {{ party.outMode === 'double' ? 'Double Out' : 'Single Out' }}
-        </p>
+        <div class="party-mode">{{ party.mode }} • {{ party.outMode === 'double' ? 'Double Out' : 'Single Out' }}</div>
       </div>
 
       <div v-if="message" :class="'alert alert-' + message.type">
         {{ message.text }}
-      </div>
-
-      <div class="turn-indicator">
-        Am Zug: {{ currentPlayer?.username || '...' }}
       </div>
 
       <!-- Current Shots Display -->
@@ -260,9 +265,9 @@
             winner: player.score === 0
           }]"
         >
-          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
             <div v-if="player.profilePicture" class="profile-pic-small" :style="{ backgroundImage: `url(${player.profilePicture})` }"></div>
-            <div class="player-name" style="margin-bottom: 0;">{{ player.username }}</div>
+            <div class="player-name" style="margin-bottom: 0; font-size: 1.1rem;">{{ player.username }}</div>
           </div>
           <div class="player-score">{{ player.score }}</div>
         </div>
@@ -332,12 +337,16 @@
 
     <!-- Winner Modal -->
     <div v-if="winner" class="modal-overlay">
-      <div class="modal">
-        <h3>🎉 Gewinner!</h3>
-        <p style="font-size: 1.5rem; margin: 20px 0; color: #2ecc71;">
+      <div class="modal winner-modal">
+        <div class="winner-icon">🏆</div>
+        <h3 style="font-size: 2rem; margin-bottom: 16px;">Gewinner!</h3>
+        <p style="font-size: 1.8rem; margin: 24px 0; color: #ffd700; font-weight: 700;">
           {{ winner }}
         </p>
-        <button @click="winner = null; leaveParty()" class="success">Zurück zum Menü</button>
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 32px;">
+          <button @click="restartGame" class="success" style="width: 100%;">Nochmal spielen</button>
+          <button @click="winner = null; leaveParty()" class="secondary" style="width: 100%;">Zurück zum Menü</button>
+        </div>
       </div>
     </div>
   </div>
@@ -423,6 +432,7 @@ async function logout() {
 }
 
 function leaveParty() {
+  socket.emit('party:leave');
   party.value = null;
   currentView.value = 'playMenu';
   joinCode.value = '';
@@ -431,6 +441,11 @@ function leaveParty() {
     mode: '501',
     outMode: 'double'
   };
+}
+
+function restartGame() {
+  winner.value = null;
+  socket.emit('game:restart');
 }
 
 function createParty() {
