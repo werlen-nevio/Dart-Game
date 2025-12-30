@@ -11,19 +11,54 @@
       </div>
     </div>
 
-    <!-- Lobby Screen -->
-    <div v-else-if="!party">
+    <!-- Home/Welcome Screen -->
+    <div v-else-if="currentView === 'home'">
       <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
           <div style="display: flex; align-items: center; gap: 12px;">
             <div v-if="profilePicture" class="profile-pic-small" :style="{ backgroundImage: `url(${profilePicture})` }"></div>
             <h2>Willkommen, {{ user }}!</h2>
           </div>
-          <div style="display: flex; gap: 8px;">
-            <button @click="showProfileSettings = true" class="secondary">Profile</button>
-            <button @click="logout" class="logout-btn">Logout</button>
-          </div>
+          <button @click="showProfileSettings = true" class="settings-btn" title="Profile Settings">
+            <i class="fas fa-cog"></i>
+          </button>
         </div>
+
+        <div class="menu-buttons">
+          <button @click="currentView = 'playMenu'" class="menu-btn">Spiel spielen</button>
+          <button @click="currentView = 'leaderboard'" class="menu-btn">Leaderboard</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Play Game Menu -->
+    <div v-else-if="currentView === 'playMenu'">
+      <div class="card">
+        <button @click="currentView = 'home'" class="back-btn">← Zurück</button>
+        <h2 style="margin-bottom: 32px;">Spiel spielen</h2>
+
+        <div class="menu-buttons">
+          <button @click="currentView = 'lobby'" class="menu-btn">Standard</button>
+          <button @click="currentView = 'joinParty'" class="menu-btn">Party beitreten</button>
+          <button disabled class="menu-btn secondary">Coming soon</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leaderboard Screen -->
+    <div v-else-if="currentView === 'leaderboard'">
+      <div class="card">
+        <button @click="currentView = 'home'" class="back-btn">← Zurück</button>
+        <h2 style="margin-bottom: 32px;">Leaderboard</h2>
+        <p style="color: #8a8d8f; text-align: center;">Coming soon</p>
+      </div>
+    </div>
+
+    <!-- Lobby Screen -->
+    <div v-else-if="currentView === 'lobby' && !party">
+      <div class="card">
+        <button @click="currentView = 'playMenu'" class="back-btn">← Zurück</button>
+        <h2 style="margin-bottom: 24px;">Standard Game</h2>
 
         <h3 style="margin-top: 24px; margin-bottom: 12px;">Party erstellen</h3>
         <div class="form-group">
@@ -45,10 +80,15 @@
           </select>
         </div>
         <button @click="createParty">Party erstellen</button>
+      </div>
+    </div>
 
-        <hr class="divider" />
+    <!-- Join Party Screen -->
+    <div v-else-if="currentView === 'joinParty' && !party">
+      <div class="card">
+        <button @click="currentView = 'playMenu'" class="back-btn">← Zurück</button>
+        <h2 style="margin-bottom: 24px;">Party beitreten</h2>
 
-        <h3 style="margin-bottom: 12px;">Party beitreten</h3>
         <div class="form-group">
           <label>Party Code</label>
           <input
@@ -58,13 +98,14 @@
             style="text-transform: uppercase;"
           />
         </div>
-        <button @click="joinParty" class="secondary">Beitreten</button>
+        <button @click="joinParty">Beitreten</button>
       </div>
     </div>
 
     <!-- Party/Game Screen -->
     <div v-else>
       <div class="party-header">
+        <button @click="leaveParty" class="back-btn" style="margin-bottom: 12px;">← Party verlassen</button>
         <h2>{{ party.name }}</h2>
         <div class="party-code">{{ party.code }}</div>
         <p style="margin-top: 12px; color: #ccc;">
@@ -204,8 +245,8 @@
 
         <!-- Control Buttons -->
         <div class="control-btns">
-          <button @click="addMiss" :disabled="!isCurrentPlayer || (party.currentShots && party.currentShots.length >= 3)" class="ctrl-btn miss-btn">Miss</button>
-          <button @click="submitThrow" :disabled="!isCurrentPlayer" class="ctrl-btn submit-btn">Next Player</button>
+          <button @click="addMiss" :disabled="!isCurrentPlayer || (party.currentShots && party.currentShots.length >= 3)" class="ctrl-btn miss-btn">Fehlwurf</button>
+          <button @click="submitThrow" :disabled="!isCurrentPlayer" class="ctrl-btn submit-btn">Nächster Spieler</button>
         </div>
       </div>
 
@@ -229,25 +270,25 @@
     </div>
 
     <!-- Profile Settings Modal -->
-    <div v-if="showProfileSettings" class="modal-overlay">
-      <div class="modal">
-        <h3>Profile Settings</h3>
+    <div v-if="showProfileSettings" class="modal-overlay" @click="showProfileSettings = false">
+      <div class="modal" @click.stop>
+        <h3>Profil-Einstellungen</h3>
 
         <div class="form-group" style="margin-top: 20px;">
-          <label>Profile Picture</label>
+          <label>Profilbild</label>
           <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
             <div
               @click="triggerFileInput"
               class="profile-pic-preview clickable"
               :style="{ backgroundImage: profilePicture ? `url(${profilePicture})` : 'none' }"
             >
-              <div v-if="!profilePicture" class="upload-placeholder">Click to upload</div>
+              <div v-if="!profilePicture" class="upload-placeholder">Zum Hochladen klicken</div>
               <div v-else class="edit-overlay">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                 </svg>
-                <span>Edit</span>
+                <span>Bearbeiten</span>
               </div>
             </div>
             <input
@@ -257,16 +298,16 @@
               accept="image/*"
               style="display: none;"
             />
-            <p style="color: #8a8d8f; font-size: 0.85rem; margin: 0;">Click on the image to change your profile picture</p>
+            <p style="color: #8a8d8f; font-size: 0.85rem; margin: 0;">Klicken Sie auf das Bild, um Ihr Profilbild zu ändern</p>
           </div>
         </div>
 
         <div class="form-group" style="margin-top: 24px;">
-          <label>Username</label>
+          <label>Benutzername</label>
           <div style="display: flex; gap: 8px; align-items: stretch;">
             <input
               v-model="newUsername"
-              placeholder="Enter new username"
+              placeholder="Neuen Benutzernamen eingeben"
               style="flex: 1; margin-bottom: 0;"
               @keyup.enter="updateUsername"
             />
@@ -275,14 +316,17 @@
               :disabled="!newUsername.trim() || newUsername.trim() === user"
               style="padding: 14px 24px; white-space: nowrap;"
             >
-              Save
+              Speichern
             </button>
           </div>
         </div>
 
         <hr class="divider" style="margin: 24px 0;" />
 
-        <button @click="showProfileSettings = false" style="width: 100%;">Close</button>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <button @click="logout" class="logout-btn" style="width: 100%;">Abmelden</button>
+          <button @click="showProfileSettings = false" class="secondary" style="width: 100%;">Schließen</button>
+        </div>
       </div>
     </div>
 
@@ -293,7 +337,7 @@
         <p style="font-size: 1.5rem; margin: 20px 0; color: #2ecc71;">
           {{ winner }}
         </p>
-        <button @click="winner = null" class="success">OK</button>
+        <button @click="winner = null; leaveParty()" class="success">Zurück zum Menü</button>
       </div>
     </div>
   </div>
@@ -310,6 +354,7 @@ const socket = io({
 // State
 const user = ref(null);
 const party = ref(null);
+const currentView = ref('home'); // 'home', 'playMenu', 'lobby', 'game', 'leaderboard'
 const joinCode = ref('');
 const createForm = ref({
   partyName: '',
@@ -368,11 +413,24 @@ async function logout() {
     user.value = null;
     party.value = null;
     profilePicture.value = null;
+    currentView.value = 'home';
+    showProfileSettings.value = false;
     socket.disconnect();
     socket.connect();
   } catch (error) {
     console.error('Logout failed:', error);
   }
+}
+
+function leaveParty() {
+  party.value = null;
+  currentView.value = 'playMenu';
+  joinCode.value = '';
+  createForm.value = {
+    partyName: '',
+    mode: '501',
+    outMode: 'double'
+  };
 }
 
 function createParty() {
@@ -544,16 +602,16 @@ async function onFileSelected(event) {
     if (response.ok) {
       const data = await response.json();
       profilePicture.value = data.profilePicture;
-      showMessage('Profile picture updated!', 'success');
+      showMessage('Profilbild aktualisiert!', 'success');
       // Add cache buster to force reload
       if (profilePicture.value && !profilePicture.value.includes('?')) {
         profilePicture.value += '?t=' + Date.now();
       }
     } else {
-      showMessage('Failed to upload profile picture', 'error');
+      showMessage('Profilbild konnte nicht hochgeladen werden', 'error');
     }
   } catch (error) {
-    showMessage('Error uploading profile picture', 'error');
+    showMessage('Fehler beim Hochladen des Profilbilds', 'error');
     console.error(error);
   }
 
@@ -563,7 +621,7 @@ async function onFileSelected(event) {
 
 async function updateUsername() {
   if (!newUsername.value.trim()) {
-    showMessage('Username cannot be empty', 'error');
+    showMessage('Benutzername darf nicht leer sein', 'error');
     return;
   }
 
@@ -580,14 +638,14 @@ async function updateUsername() {
     if (response.ok) {
       const data = await response.json();
       user.value = data.username;
-      showMessage('Username updated!', 'success');
+      showMessage('Benutzername aktualisiert!', 'success');
       // Also update socket
       socket.emit('user:login', data.username);
     } else {
-      showMessage('Failed to update username', 'error');
+      showMessage('Benutzername konnte nicht aktualisiert werden', 'error');
     }
   } catch (error) {
-    showMessage('Error updating username', 'error');
+    showMessage('Fehler beim Aktualisieren des Benutzernamens', 'error');
     console.error(error);
   }
 }
