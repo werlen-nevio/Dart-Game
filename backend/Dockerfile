@@ -1,13 +1,19 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
+# Copy package files
 COPY package*.json ./
 
-RUN npm install
+# Install dependencies
+RUN npm install --production
 
+# Copy application files
 COPY . .
+
+# Create uploads directory
+RUN mkdir -p uploads
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+CMD ["node", "server.js"]

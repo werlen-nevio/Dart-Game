@@ -634,3 +634,149 @@ button:disabled:hover {
     padding: 12px 20px;
   }
 }
+
+/* Login Screen */
+.login-container {
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  background: #1a1d1f;
+  border: 1px solid #2a2d2f;
+  border-radius: 12px;
+  padding: 48px 40px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+}
+
+.login-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #e0e0e0;
+  margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+
+.login-subtitle {
+  font-size: 1rem;
+  color: #8a8d8f;
+  margin-bottom: 32px;
+  font-weight: 400;
+}
+
+.login-btn {
+  display: inline-block;
+  width: 100%;
+  padding: 16px 32px;
+  background: #ffffff;
+  color: #0f1415;
+  border: 1px solid #ffffff;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.login-btn:hover {
+  background: #e0e0e0;
+  border-color: #e0e0e0;
+  transform: translateY(-2px);
+}
+
+.login-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 40px 32px;
+  }
+
+  .login-title {
+    font-size: 2rem;
+  }
+}
+
+/* Profile Picture Styles */
+.profile-pic-small {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  border: 2px solid #3a3d3f;
+}
+
+.profile-pic-preview {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  border: 3px solid #3a3d3f;
+  background-color: #0f1415;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-pic-preview.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile-pic-preview.clickable:hover {
+  border-color: #5a5d5f;
+  transform: scale(1.05);
+}
+
+.profile-pic-preview.clickable:hover .edit-overlay {
+  opacity: 1;
+}
+
+.upload-placeholder {
+  color: #8a8d8f;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 10px;
+  font-weight: 500;
+}
+
+.edit-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Logout Button */
+.logout-btn {
+  background: #2a1a1a;
+  border-color: #4a2a2a;
+  color: #ff6b6b;
+}
+
+.logout-btn:hover {
+  background: #3a2222;
+  border-color: #5a3232;
+}

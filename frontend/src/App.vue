@@ -1,23 +1,29 @@
 <template>
   <div id="app">
     <!-- Login Screen -->
-    <div v-if="!user" class="card">
-      <h2>Login</h2>
-      <div class="form-group">
-        <input
-          v-model="loginUsername"
-          @keyup.enter="login"
-          placeholder="Dein Username"
-          type="text"
-        />
+    <div v-if="!user" class="login-container">
+      <div class="login-card">
+        <h1 class="login-title">Dart Game</h1>
+        <br>
+        <a href="/auth/google" class="login-btn">
+          Mit Google anmelden
+        </a>
       </div>
-      <button @click="login">Login</button>
     </div>
 
     <!-- Lobby Screen -->
     <div v-else-if="!party">
       <div class="card">
-        <h2>Willkommen, {{ user }}!</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div v-if="profilePicture" class="profile-pic-small" :style="{ backgroundImage: `url(${profilePicture})` }"></div>
+            <h2>Willkommen, {{ user }}!</h2>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button @click="showProfileSettings = true" class="secondary">Profile</button>
+            <button @click="logout" class="logout-btn">Logout</button>
+          </div>
+        </div>
 
         <h3 style="margin-top: 24px; margin-bottom: 12px;">Party erstellen</h3>
         <div class="form-group">
@@ -213,9 +219,70 @@
             winner: player.score === 0
           }]"
         >
-          <div class="player-name">{{ player.username }}</div>
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div v-if="player.profilePicture" class="profile-pic-small" :style="{ backgroundImage: `url(${player.profilePicture})` }"></div>
+            <div class="player-name" style="margin-bottom: 0;">{{ player.username }}</div>
+          </div>
           <div class="player-score">{{ player.score }}</div>
         </div>
+      </div>
+    </div>
+
+    <!-- Profile Settings Modal -->
+    <div v-if="showProfileSettings" class="modal-overlay">
+      <div class="modal">
+        <h3>Profile Settings</h3>
+
+        <div class="form-group" style="margin-top: 20px;">
+          <label>Profile Picture</label>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
+            <div
+              @click="triggerFileInput"
+              class="profile-pic-preview clickable"
+              :style="{ backgroundImage: profilePicture ? `url(${profilePicture})` : 'none' }"
+            >
+              <div v-if="!profilePicture" class="upload-placeholder">Click to upload</div>
+              <div v-else class="edit-overlay">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                <span>Edit</span>
+              </div>
+            </div>
+            <input
+              ref="fileInput"
+              type="file"
+              @change="onFileSelected"
+              accept="image/*"
+              style="display: none;"
+            />
+            <p style="color: #8a8d8f; font-size: 0.85rem; margin: 0;">Click on the image to change your profile picture</p>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 24px;">
+          <label>Username</label>
+          <div style="display: flex; gap: 8px; align-items: stretch;">
+            <input
+              v-model="newUsername"
+              placeholder="Enter new username"
+              style="flex: 1; margin-bottom: 0;"
+              @keyup.enter="updateUsername"
+            />
+            <button
+              @click="updateUsername"
+              :disabled="!newUsername.trim() || newUsername.trim() === user"
+              style="padding: 14px 24px; white-space: nowrap;"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+
+        <hr class="divider" style="margin: 24px 0;" />
+
+        <button @click="showProfileSettings = false" style="width: 100%;">Close</button>
       </div>
     </div>
 
@@ -233,15 +300,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue';
+import { ref, computed, onUnmounted, onMounted } from 'vue';
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:3000');
+const socket = io({
+  withCredentials: true
+});
 
 // State
 const user = ref(null);
 const party = ref(null);
-const loginUsername = ref('');
 const joinCode = ref('');
 const createForm = ref({
   partyName: '',
@@ -251,6 +319,30 @@ const createForm = ref({
 const message = ref(null);
 const dartboardMessage = ref(null);
 const winner = ref(null);
+const showProfileSettings = ref(false);
+const profilePicture = ref(null);
+const newUsername = ref('');
+const fileInput = ref(null);
+
+// Check if user is already authenticated via Google OAuth
+onMounted(async () => {
+  try {
+    const response = await fetch('/auth/user', {
+      credentials: 'include'
+    });
+    if (response.ok) {
+      const userData = await response.json();
+      user.value = userData.username;
+      profilePicture.value = userData.profilePicture;
+      newUsername.value = userData.username;
+      // Also log in via socket
+      socket.emit('user:login', userData.username);
+    }
+  } catch (error) {
+    // User not authenticated, show login screen
+    console.log('Not authenticated via OAuth');
+  }
+});
 
 // Dartboard numbers in standard order (clockwise from top)
 const boardNumbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
@@ -267,9 +359,20 @@ const isCurrentPlayer = computed(() => {
 });
 
 // Methods
-function login() {
-  if (!loginUsername.value.trim()) return;
-  socket.emit('user:login', loginUsername.value.trim());
+async function logout() {
+  try {
+    await fetch('/auth/logout', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    user.value = null;
+    party.value = null;
+    profilePicture.value = null;
+    socket.disconnect();
+    socket.connect();
+  } catch (error) {
+    console.error('Logout failed:', error);
+  }
 }
 
 function createParty() {
@@ -378,9 +481,123 @@ function showDartboardMessage(text, type = 'error') {
   }, 2000);
 }
 
+function triggerFileInput() {
+  fileInput.value.click();
+}
+
+async function resizeImage(file, maxWidth = 800, maxHeight = 800) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate new dimensions
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          resolve(blob);
+        }, 'image/jpeg', 0.85);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function onFileSelected(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  try {
+    // Resize image before upload
+    const resizedBlob = await resizeImage(file);
+
+    const formData = new FormData();
+    formData.append('profilePicture', resizedBlob, 'profile.jpg');
+
+    const response = await fetch('/api/upload-profile-picture', {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      profilePicture.value = data.profilePicture;
+      showMessage('Profile picture updated!', 'success');
+      // Add cache buster to force reload
+      if (profilePicture.value && !profilePicture.value.includes('?')) {
+        profilePicture.value += '?t=' + Date.now();
+      }
+    } else {
+      showMessage('Failed to upload profile picture', 'error');
+    }
+  } catch (error) {
+    showMessage('Error uploading profile picture', 'error');
+    console.error(error);
+  }
+
+  // Reset file input
+  event.target.value = '';
+}
+
+async function updateUsername() {
+  if (!newUsername.value.trim()) {
+    showMessage('Username cannot be empty', 'error');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/update-username', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username: newUsername.value.trim() })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      user.value = data.username;
+      showMessage('Username updated!', 'success');
+      // Also update socket
+      socket.emit('user:login', data.username);
+    } else {
+      showMessage('Failed to update username', 'error');
+    }
+  } catch (error) {
+    showMessage('Error updating username', 'error');
+    console.error(error);
+  }
+}
+
 // Socket Listeners
 socket.on('user:logged_in', (data) => {
   user.value = data.username;
+  if (data.profilePicture) {
+    profilePicture.value = data.profilePicture;
+  }
 });
 
 socket.on('party:created', (data) => {
