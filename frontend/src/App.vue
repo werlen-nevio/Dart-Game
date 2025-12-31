@@ -42,8 +42,8 @@
 
         <div class="menu-buttons">
           <button @click="currentView = 'lobby'" class="menu-btn">Standard</button>
-          <button @click="currentView = 'joinParty'" class="menu-btn">Party beitreten</button>
           <button disabled class="menu-btn secondary">Coming soon</button>
+          <button @click="currentView = 'joinParty'" class="menu-btn join-party">Party beitreten</button>
         </div>
       </div>
     </div>

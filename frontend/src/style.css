@@ -895,6 +895,17 @@ button:disabled:hover {
   font-size: 20px;
 }
 
+.menu-btn.join-party {
+  background: #2a2d2f;
+  color: #ffffff;
+  border-color: #ffffff;
+}
+
+.menu-btn.join-party:hover:not(:disabled) {
+  background: #3a3d3f;
+  border-color: #ffffff;
+}
+
 @media (max-width: 480px) {
   .menu-btn {
     padding: 16px 24px;
