@@ -9,6 +9,10 @@ body {
   background: #0f1415;
   color: #e0e0e0;
   min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  touch-action: manipulation;
 }
 
 #app {
@@ -39,6 +43,9 @@ button {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-height: 44px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
 }
 
 button:hover {
@@ -92,6 +99,9 @@ input {
   font-size: 16px;
   width: 100%;
   transition: all 0.2s ease;
+  min-height: 44px;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 input:focus {
@@ -110,6 +120,9 @@ select {
   width: 100%;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-height: 44px;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 select:focus {
@@ -282,11 +295,19 @@ h3 {
 
 .shot-box.clickable {
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 107, 107, 0.2);
 }
 
 .shot-box.clickable:hover {
   background: #1a1d1f;
   border-color: #ff6b6b;
+}
+
+.shot-box.clickable:active {
+  background: #1f2224;
+  border-color: #ff8b8b;
+  transform: scale(0.98);
 }
 
 .shot-total {
@@ -385,12 +406,23 @@ h3 {
   background: linear-gradient(135deg, #1a1d1f 0%, #1f2924 100%);
   border: 2px solid #ffd700;
   box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
+  max-width: 500px;
 }
 
 .winner-icon {
   font-size: 5rem;
   margin-bottom: 16px;
   animation: bounce 1s infinite;
+}
+
+@media (max-width: 480px) {
+  .winner-modal {
+    max-width: 95%;
+  }
+
+  .winner-icon {
+    font-size: 4rem;
+  }
 }
 
 @keyframes bounce {
@@ -477,10 +509,16 @@ h3 {
 .dartboard-segment {
   cursor: pointer;
   transition: opacity 0.1s;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.2);
+  touch-action: manipulation;
 }
 
 .dartboard-segment:hover:not(.disabled) {
   opacity: 0.8;
+}
+
+.dartboard-segment:active:not(.disabled) {
+  opacity: 0.6;
 }
 
 .dartboard-segment.disabled {
@@ -572,91 +610,176 @@ button:disabled:hover {
 
 @media (max-width: 768px) {
   #app {
-    padding: 20px 16px;
+    padding: 12px;
   }
 
   h1 {
-    font-size: 2.5rem;
-    margin-bottom: 1.5rem;
+    font-size: 2.2rem;
+    margin-bottom: 1.2rem;
+  }
+
+  h2 {
+    font-size: 1.3rem;
   }
 
   .card {
-    padding: 24px;
-    border-radius: 16px;
+    padding: 16px;
+    border-radius: 12px;
   }
 
   .dartboard-svg-circle {
-    max-width: 400px;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .dartboard-circle {
+    padding: 0 8px;
   }
 
   .segment-label {
-    font-size: 20px;
+    font-size: 18px;
     stroke-width: 1.5px;
   }
 
   .ctrl-btn {
-    padding: 14px;
-    font-size: 0.95rem;
+    padding: 16px 12px;
+    font-size: 1rem;
+    min-height: 48px;
   }
 
   .player-score {
-    font-size: 3rem;
+    font-size: 2.5rem;
   }
 
   .current-shots-display {
-    padding: 20px;
-    gap: 12px;
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .shot-box {
+    padding: 10px 8px;
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   .shot-value {
-    font-size: 2rem;
+    font-size: 1.6rem;
   }
 
   .party-code {
-    font-size: 0.9rem;
-    padding: 6px 12px;
-    letter-spacing: 2px;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    letter-spacing: 1.5px;
   }
 
   .party-header-compact {
     flex-wrap: wrap;
     gap: 8px;
     justify-content: center;
+    padding: 12px;
   }
 
   .party-mode {
     width: 100%;
     text-align: center;
+    font-size: 0.8rem;
+  }
+
+  .back-btn {
+    font-size: 0.9rem;
+    padding: 10px 16px;
+    min-height: 44px;
   }
 }
 
 @media (max-width: 480px) {
+  #app {
+    padding: 8px;
+  }
+
   h1 {
-    font-size: 2rem;
-  }
-
-  .card {
-    padding: 20px;
-  }
-
-  .player-card {
-    padding: 20px;
-  }
-
-  .player-score {
-    font-size: 2.5rem;
-  }
-
-  .shot-value {
     font-size: 1.8rem;
   }
 
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  .player-card {
+    padding: 14px;
+  }
+
+  .player-name {
+    font-size: 1rem;
+  }
+
+  .player-score {
+    font-size: 2.2rem;
+  }
+
+  .shot-box {
+    padding: 8px 6px;
+    min-height: 55px;
+  }
+
+  .shot-label {
+    font-size: 0.75rem;
+    margin-bottom: 6px;
+  }
+
+  .shot-value {
+    font-size: 1.5rem;
+  }
+
+  .segment-label {
+    font-size: 16px;
+    stroke-width: 1px;
+  }
+
   .modal {
-    padding: 28px;
+    padding: 20px;
+    width: 95%;
   }
 
   button {
-    padding: 12px 20px;
+    padding: 12px 18px;
+    font-size: 15px;
+  }
+
+  .ctrl-btn {
+    padding: 14px 10px;
+    font-size: 0.95rem;
+    min-height: 50px;
+  }
+
+  .back-btn {
+    padding: 10px 14px;
+    font-size: 0.85rem;
+  }
+
+  .settings-btn {
+    width: 44px;
+    height: 44px;
+    padding: 10px;
+  }
+
+  .dartboard-message {
+    padding: 24px 20px;
+  }
+
+  .dartboard-message-icon {
+    font-size: 3.5rem;
+    margin-bottom: 16px;
+  }
+
+  .dartboard-message-text {
+    font-size: 1.2rem;
   }
 }
 
@@ -720,18 +843,47 @@ button:disabled:hover {
   transform: scale(0.98);
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .login-card {
     padding: 40px 32px;
+    max-width: 360px;
   }
 
   .login-title {
-    font-size: 2rem;
+    font-size: 2.2rem;
+  }
+
+  .login-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .login-btn {
+    padding: 18px 28px;
+    font-size: 1.15rem;
+    min-height: 52px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 32px 24px;
+    max-width: 340px;
+    margin: 0 12px;
+  }
+
+  .login-title {
+    font-size: 1.9rem;
+  }
+
+  .login-subtitle {
+    font-size: 0.9rem;
+    margin-bottom: 28px;
   }
 
   .login-btn {
     padding: 16px 24px;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
+    min-height: 50px;
   }
 }
 
@@ -906,20 +1058,34 @@ button:disabled:hover {
   border-color: #ffffff;
 }
 
+@media (max-width: 768px) {
+  .menu-btn {
+    padding: 18px 28px;
+    font-size: 1.15rem;
+    min-height: 52px;
+  }
+}
+
 @media (max-width: 480px) {
   .menu-btn {
-    padding: 16px 24px;
-    font-size: 1.1rem;
+    padding: 16px 22px;
+    font-size: 1.05rem;
+    min-height: 50px;
   }
 
   .settings-btn {
     width: 44px;
     height: 44px;
     padding: 10px;
+    min-height: 44px;
   }
 
   .settings-btn i {
     font-size: 18px;
+  }
+
+  .menu-buttons {
+    gap: 14px;
   }
 }
 
@@ -937,6 +1103,8 @@ button:disabled:hover {
   padding: 20px;
   cursor: pointer;
   transition: all 0.2s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
 }
 
 .active-party-card:hover {
@@ -948,6 +1116,7 @@ button:disabled:hover {
 
 .active-party-card:active {
   transform: translateY(0);
+  background: #252829;
 }
 
 .party-header-info {
@@ -1018,22 +1187,39 @@ button:disabled:hover {
 
 @media (max-width: 480px) {
   .active-party-card {
-    padding: 16px;
+    padding: 14px;
+  }
+
+  .party-header-info {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
   .party-header-info h3 {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
   }
 
   .party-code-badge {
-    font-size: 0.8rem;
-    padding: 4px 10px;
+    font-size: 0.75rem;
+    padding: 5px 10px;
+    letter-spacing: 1.5px;
   }
 
   .party-details {
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;
+    font-size: 0.85rem;
+  }
+
+  .party-player {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+  }
+
+  .profile-pic-tiny {
+    width: 20px;
+    height: 20px;
   }
 }
 
@@ -1080,6 +1266,8 @@ button:disabled:hover {
   gap: 16px;
   transition: all 0.2s ease;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
 }
 
 .leaderboard-entry:hover {
@@ -1087,6 +1275,11 @@ button:disabled:hover {
   border-color: #3a3d3f;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.leaderboard-entry:active {
+  transform: translateY(0);
+  background: #252829;
 }
 
 .leaderboard-entry.is-current-user {
@@ -1164,10 +1357,11 @@ button:disabled:hover {
   .leaderboard-entry {
     flex-wrap: wrap;
     gap: 12px;
+    padding: 14px;
   }
 
   .leaderboard-rank {
-    min-width: 40px;
+    min-width: 36px;
   }
 
   .rank-medal {
@@ -1175,12 +1369,16 @@ button:disabled:hover {
   }
 
   .rank-number {
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
 
   .leaderboard-player {
     flex: 1 1 100%;
     order: -1;
+  }
+
+  .player-username {
+    font-size: 1rem;
   }
 
   .leaderboard-stats {
@@ -1193,34 +1391,71 @@ button:disabled:hover {
     min-width: auto;
   }
 
-  .reset-countdown {
-    font-size: 1.4rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .leaderboard-entry {
-    padding: 12px;
-  }
-
-  .player-username {
-    font-size: 1rem;
-  }
-
   .stat-value {
     font-size: 1rem;
   }
 
   .elo-value {
-    font-size: 1.1rem;
-  }
-
-  .stat-label {
-    font-size: 0.7rem;
+    font-size: 1.2rem;
   }
 
   .reset-countdown {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
+  }
+
+  .reset-timer {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .leaderboard-entry {
+    padding: 10px;
+  }
+
+  .leaderboard-rank {
+    min-width: 32px;
+  }
+
+  .rank-medal {
+    font-size: 1.3rem;
+  }
+
+  .rank-number {
+    font-size: 0.9rem;
+  }
+
+  .player-username {
+    font-size: 0.95rem;
+  }
+
+  .profile-pic-small {
+    width: 40px;
+    height: 40px;
+  }
+
+  .stat-value {
+    font-size: 0.95rem;
+  }
+
+  .elo-value {
+    font-size: 1.05rem;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+  }
+
+  .reset-countdown {
+    font-size: 1.1rem;
+  }
+
+  .reset-timer {
+    padding: 12px;
+  }
+
+  .reset-label {
+    font-size: 0.8rem;
   }
 }
 
@@ -1268,11 +1503,17 @@ button:disabled:hover {
   text-align: center;
   transition: all 0.2s ease;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
 }
 
 .badge-item:hover {
   transform: translateY(-4px);
   box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+.badge-item:active {
+  transform: translateY(-2px);
 }
 
 .badge-icon {
@@ -1342,7 +1583,9 @@ button:disabled:hover {
 
 @media (max-width: 768px) {
   .player-profile-modal {
-    max-height: 85vh;
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .profile-pic-large {
@@ -1350,8 +1593,13 @@ button:disabled:hover {
     height: 100px;
   }
 
+  .profile-header {
+    padding: 16px 0;
+  }
+
   .badges-grid {
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+    gap: 10px;
   }
 
   .badge-icon {
@@ -1364,10 +1612,19 @@ button:disabled:hover {
 
   .stats-grid {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 14px;
   }
 
   .stat-card-value {
     font-size: 1.5rem;
+  }
+
+  .stat-card-label {
+    font-size: 0.8rem;
   }
 }
 
@@ -1424,6 +1681,9 @@ button:disabled:hover {
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  min-height: 80px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
 }
 
 .badge-selector-item:hover {
@@ -1451,4 +1711,62 @@ button:disabled:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+}
+
+/* Extra small mobile devices */
+@media (max-width: 375px) {
+  #app {
+    padding: 6px;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  h2 {
+    font-size: 1.1rem;
+  }
+
+  .card {
+    padding: 12px;
+  }
+
+  button {
+    font-size: 14px;
+    padding: 11px 16px;
+  }
+
+  .menu-btn {
+    font-size: 1rem;
+    padding: 14px 20px;
+  }
+
+  .ctrl-btn {
+    font-size: 0.9rem;
+    padding: 12px 8px;
+  }
+
+  .player-score {
+    font-size: 2rem;
+  }
+
+  .shot-value {
+    font-size: 1.3rem;
+  }
+
+  .segment-label {
+    font-size: 14px;
+  }
+
+  .modal {
+    padding: 16px;
+  }
+
+  .login-title {
+    font-size: 1.7rem;
+  }
+
+  .login-btn {
+    font-size: 1rem;
+  }
 }
