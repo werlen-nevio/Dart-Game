@@ -102,9 +102,18 @@ app.post('/auth/logout', (req, res) => {
 });
 
 // Get current user
-app.get('/auth/user', (req, res) => {
+app.get('/auth/user', async (req, res) => {
   if (req.isAuthenticated()) {
-    res.json(req.user);
+    // Fetch full user data including badges
+    const user = await User.findById(req.user._id);
+    const selectedBadgeObj = user.badges.find(badge => badge.id === user.selectedBadge);
+
+    res.json({
+      ...req.user.toObject(),
+      selectedBadge: user.selectedBadge,
+      selectedBadgeObj: selectedBadgeObj || null,
+      badges: user.badges
+    });
   } else {
     res.status(401).json({ error: 'Not authenticated' });
   }
@@ -164,6 +173,44 @@ app.post('/api/update-username', async (req, res) => {
   }
 });
 
+// Update selected badge
+app.post('/api/update-selected-badge', async (req, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { badgeId } = req.body;
+
+    // Update user's selected badge
+    const user = await User.findById(req.user._id);
+
+    // Validate that the badge exists in user's badges (or allow null to unselect)
+    if (badgeId !== null && badgeId !== undefined && badgeId !== '') {
+      const hasBadge = user.badges.some(badge => badge.id === badgeId);
+      if (!hasBadge) {
+        return res.status(400).json({ error: 'Badge not found in user collection' });
+      }
+      user.selectedBadge = badgeId;
+    } else {
+      user.selectedBadge = null;
+    }
+
+    await user.save();
+
+    // Get the selected badge object
+    const selectedBadgeObj = user.badges.find(badge => badge.id === user.selectedBadge);
+
+    res.json({
+      message: 'Selected badge updated successfully',
+      selectedBadge: user.selectedBadge,
+      selectedBadgeObj: selectedBadgeObj || null
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get leaderboard
 app.get('/api/leaderboard', async (req, res) => {
   try {
@@ -171,7 +218,7 @@ app.get('/api/leaderboard', async (req, res) => {
     const users = await User.find({})
       .sort({ elo: -1, wins: -1 })
       .limit(100)
-      .select('username profilePicture elo wins losses');
+      .select('username profilePicture elo wins losses badges selectedBadge');
 
     // Get next reset date (use first user's reset date or calculate new one)
     let nextResetDate;
@@ -182,18 +229,70 @@ app.get('/api/leaderboard', async (req, res) => {
     }
 
     res.json({
-      leaderboard: users.map((user, index) => ({
-        rank: index + 1,
-        username: user.username,
-        profilePicture: user.profilePicture,
-        elo: user.elo,
-        wins: user.wins,
-        losses: user.losses,
-        winRate: user.wins + user.losses > 0
-          ? Math.round((user.wins / (user.wins + user.losses)) * 100)
-          : 0
-      })),
+      leaderboard: users.map((user, index) => {
+        const selectedBadgeObj = user.badges.find(badge => badge.id === user.selectedBadge);
+        return {
+          rank: index + 1,
+          username: user.username,
+          profilePicture: user.profilePicture,
+          elo: user.elo,
+          wins: user.wins,
+          losses: user.losses,
+          winRate: user.wins + user.losses > 0
+            ? Math.round((user.wins / (user.wins + user.losses)) * 100)
+            : 0,
+          selectedBadgeObj: selectedBadgeObj || null
+        };
+      }),
       nextResetDate
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get player profile
+app.get('/api/player/:username', async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    // Calculate all-time win rate
+    const allTimeWinRate = user.allTimeWins + user.allTimeLosses > 0
+      ? Math.round((user.allTimeWins / (user.allTimeWins + user.allTimeLosses)) * 100)
+      : 0;
+
+    // Calculate current week win rate
+    const weeklyWinRate = user.wins + user.losses > 0
+      ? Math.round((user.wins / (user.wins + user.losses)) * 100)
+      : 0;
+
+    // Get selected badge object
+    const selectedBadgeObj = user.badges.find(badge => badge.id === user.selectedBadge);
+
+    res.json({
+      username: user.username,
+      profilePicture: user.profilePicture,
+      // Current week stats
+      elo: user.elo,
+      wins: user.wins,
+      losses: user.losses,
+      weeklyWinRate,
+      // All-time stats
+      allTimeWins: user.allTimeWins,
+      allTimeLosses: user.allTimeLosses,
+      allTimeHighestElo: user.allTimeHighestElo,
+      totalGamesPlayed: user.totalGamesPlayed,
+      allTimeWinRate,
+      // Badges
+      badges: user.badges || [],
+      selectedBadge: user.selectedBadge,
+      selectedBadgeObj: selectedBadgeObj || null,
+      // Account info
+      createdAt: user.createdAt
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -249,12 +348,22 @@ async function updateEloRatings(winnerUsername, loserUsername) {
     // Update ELO and stats
     winner.elo += winnerChange;
     winner.wins += 1;
+    winner.allTimeWins += 1;
+    winner.totalGamesPlayed += 1;
+    if (winner.elo > winner.allTimeHighestElo) {
+      winner.allTimeHighestElo = winner.elo;
+    }
     if (!winner.weeklyResetDate) {
       winner.weeklyResetDate = getNextResetDate();
     }
 
     loser.elo = Math.max(0, loser.elo + loserChange); // Don't go below 0
     loser.losses += 1;
+    loser.allTimeLosses += 1;
+    loser.totalGamesPlayed += 1;
+    if (loser.elo > loser.allTimeHighestElo) {
+      loser.allTimeHighestElo = loser.elo;
+    }
     if (!loser.weeklyResetDate) {
       loser.weeklyResetDate = getNextResetDate();
     }
@@ -352,19 +461,21 @@ io.on('connection', (socket) => {
 
   // Login (simplified - now just stores username)
   socket.on('user:login', async (username) => {
-    // Try to find user in database for profile picture
+    // Try to find user in database for profile picture and badge
     let profilePicture = null;
+    let selectedBadgeObj = null;
     try {
       const user = await User.findOne({ username });
       if (user) {
         profilePicture = user.profilePicture;
+        selectedBadgeObj = user.badges.find(badge => badge.id === user.selectedBadge);
       }
     } catch (error) {
       console.log('User not found in DB, using default');
     }
 
-    socketUsers.set(socket.id, { username, partyCode: null, profilePicture });
-    socket.emit('user:logged_in', { username, profilePicture });
+    socketUsers.set(socket.id, { username, partyCode: null, profilePicture, selectedBadgeObj });
+    socket.emit('user:logged_in', { username, profilePicture, selectedBadgeObj });
     console.log(`User logged in: ${username}`);
   });
 
@@ -385,7 +496,8 @@ io.on('connection', (socket) => {
         username: user.username,
         score: startScore,
         socketId: socket.id,
-        profilePicture: user.profilePicture
+        profilePicture: user.profilePicture,
+        selectedBadgeObj: user.selectedBadgeObj
       }],
       currentPlayerIndex: 0,
       currentShots: [],
@@ -415,7 +527,8 @@ io.on('connection', (socket) => {
       playerCount: party.players.length,
       players: party.players.map(p => ({
         username: p.username,
-        profilePicture: p.profilePicture
+        profilePicture: p.profilePicture,
+        selectedBadgeObj: p.selectedBadgeObj
       }))
     }));
 
@@ -438,12 +551,14 @@ io.on('connection', (socket) => {
         username: user.username,
         score: startScore,
         socketId: socket.id,
-        profilePicture: user.profilePicture
+        profilePicture: user.profilePicture,
+        selectedBadgeObj: user.selectedBadgeObj
       });
     } else {
-      // Reconnect: update socketId and profile picture
+      // Reconnect: update socketId, profile picture, and badge
       existing.socketId = socket.id;
       existing.profilePicture = user.profilePicture;
+      existing.selectedBadgeObj = user.selectedBadgeObj;
 
       // Cancel disconnect timer if exists
       if (disconnectTimers.has(socket.id)) {

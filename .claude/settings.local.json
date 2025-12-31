@@ -10,7 +10,10 @@
       "Bash(else echo \"Uploads directory exists\")",
       "Bash(fi)",
       "Bash(docker exec:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker cp:*)",
+      "Bash(docker restart:*)"
     ]
   }
 }

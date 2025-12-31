@@ -17,7 +17,10 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
           <div style="display: flex; align-items: center; gap: 12px;">
             <div v-if="profilePicture" class="profile-pic-small" :style="{ backgroundImage: `url(${profilePicture})` }"></div>
-            <h2>Willkommen, {{ user }}!</h2>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h2 style="margin: 0;">Willkommen, {{ user }}!</h2>
+              <span v-if="selectedBadgeObj" class="user-badge" :title="selectedBadgeObj.name">{{ selectedBadgeObj.icon }}</span>
+            </div>
           </div>
           <button @click="showProfileSettings = true" class="settings-btn" title="Profile Settings">
             <i class="fas fa-cog"></i>
@@ -73,6 +76,7 @@
             v-for="entry in leaderboard"
             :key="entry.rank"
             :class="['leaderboard-entry', { 'is-current-user': entry.username === user }]"
+            @click="openPlayerProfile(entry.username)"
           >
             <div class="leaderboard-rank">
               <span v-if="entry.rank === 1" class="rank-medal">🥇</span>
@@ -82,7 +86,10 @@
             </div>
             <div class="leaderboard-player">
               <div v-if="entry.profilePicture" class="profile-pic-small" :style="{ backgroundImage: `url(${entry.profilePicture})` }"></div>
-              <span class="player-username">{{ entry.username }}</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="player-username">{{ entry.username }}</span>
+                <span v-if="entry.selectedBadgeObj" class="user-badge" :title="entry.selectedBadgeObj.name">{{ entry.selectedBadgeObj.icon }}</span>
+              </div>
             </div>
             <div class="leaderboard-stats">
               <div class="stat-item">
@@ -169,7 +176,10 @@
             <div class="party-players">
               <div v-for="player in party.players" :key="player.username" class="party-player">
                 <div v-if="player.profilePicture" class="profile-pic-tiny" :style="{ backgroundImage: `url(${player.profilePicture})` }"></div>
-                <span>{{ player.username }}</span>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <span>{{ player.username }}</span>
+                  <span v-if="player.selectedBadgeObj" class="user-badge-small" :title="player.selectedBadgeObj.name">{{ player.selectedBadgeObj.icon }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -330,7 +340,10 @@
         >
           <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
             <div v-if="player.profilePicture" class="profile-pic-small" :style="{ backgroundImage: `url(${player.profilePicture})` }"></div>
-            <div class="player-name" style="margin-bottom: 0; font-size: 1.1rem;">{{ player.username }}</div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="player-name" style="margin-bottom: 0; font-size: 1.1rem;">{{ player.username }}</div>
+              <span v-if="player.selectedBadgeObj" class="user-badge" :title="player.selectedBadgeObj.name">{{ player.selectedBadgeObj.icon }}</span>
+            </div>
           </div>
           <div class="player-score">{{ player.score }}</div>
         </div>
@@ -389,6 +402,34 @@
           </div>
         </div>
 
+        <div class="form-group" style="margin-top: 24px;">
+          <label>Ausgewähltes Abzeichen</label>
+          <p style="color: #8a8d8f; font-size: 0.85rem; margin: 4px 0 12px 0;">Wähle ein Abzeichen aus, das neben deinem Namen angezeigt wird</p>
+          <div v-if="userBadges.length > 0" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
+            <div
+              v-for="badge in userBadges"
+              :key="badge.id"
+              @click="updateSelectedBadge(badge.id)"
+              :class="['badge-selector-item', { selected: selectedBadge === badge.id }]"
+              :title="badge.description"
+            >
+              <div class="badge-icon-large">{{ badge.icon }}</div>
+              <div class="badge-name-small">{{ badge.name }}</div>
+            </div>
+            <div
+              @click="updateSelectedBadge(null)"
+              :class="['badge-selector-item', { selected: !selectedBadge }]"
+              title="Kein Abzeichen anzeigen"
+            >
+              <div class="badge-icon-large" style="opacity: 0.3;">✕</div>
+              <div class="badge-name-small">Keins</div>
+            </div>
+          </div>
+          <div v-else style="color: #8a8d8f; font-style: italic;">
+            <p>Du hast noch keine Abzeichen verdient</p>
+          </div>
+        </div>
+
         <hr class="divider" style="margin: 24px 0;" />
 
         <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -410,6 +451,71 @@
           <button @click="restartGame" class="success" style="width: 100%;">Nochmal spielen</button>
           <button @click="winner = null; leaveParty()" class="secondary" style="width: 100%;">Zurück zum Menü</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Player Profile Modal -->
+    <div v-if="showPlayerProfile && selectedPlayer" class="modal-overlay" @click="showPlayerProfile = false">
+      <div class="modal player-profile-modal" @click.stop>
+        <div class="profile-header">
+          <div v-if="selectedPlayer.profilePicture" class="profile-pic-large" :style="{ backgroundImage: `url(${selectedPlayer.profilePicture})` }"></div>
+          <div v-else class="profile-pic-large" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+          <div style="display: flex; align-items: center; gap: 8px; justify-content: center; margin: 16px 0 8px 0;">
+            <h2 style="margin: 0;">{{ selectedPlayer.username }}</h2>
+            <span v-if="selectedPlayer.selectedBadgeObj" class="user-badge-large" :title="selectedPlayer.selectedBadgeObj.name">{{ selectedPlayer.selectedBadgeObj.icon }}</span>
+          </div>
+          <p style="color: #8a8d8f; font-size: 0.9rem; margin: 0;">
+            Mitglied seit {{ new Date(selectedPlayer.createdAt).toLocaleDateString('de-DE') }}
+          </p>
+        </div>
+
+        <!-- Badges Section -->
+        <div class="badges-section">
+          <h3 style="font-size: 1.1rem; margin-bottom: 12px;">Abzeichen</h3>
+          <div v-if="selectedPlayer.badges && selectedPlayer.badges.length > 0" class="badges-grid">
+            <div
+              v-for="badge in selectedPlayer.badges"
+              :key="badge.id"
+              class="badge-item"
+              :title="badge.description"
+            >
+              <div class="badge-icon">{{ badge.icon }}</div>
+              <div class="badge-name">{{ badge.name }}</div>
+            </div>
+          </div>
+          <div v-else class="no-badges">
+            <p style="color: #8a8d8f; font-style: italic; margin: 0;">Noch keine Abzeichen verdient</p>
+          </div>
+        </div>
+
+        <hr class="divider" />
+
+        <!-- Current Week Stats -->
+        <div class="stats-section">
+          <h3 style="font-size: 1.1rem; margin-bottom: 12px;">Diese Woche</h3>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-card-label">ELO Rating</div>
+              <div class="stat-card-value elo-value">{{ selectedPlayer.elo }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Siege</div>
+              <div class="stat-card-value" style="color: #4caf50;">{{ selectedPlayer.wins }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Niederlagen</div>
+              <div class="stat-card-value" style="color: #f44336;">{{ selectedPlayer.losses }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Siegesrate</div>
+              <div class="stat-card-value">{{ selectedPlayer.weeklyWinRate }}%</div>
+            </div>
+          </div>
+        </div>
+
+        <button @click="showPlayerProfile = false" class="secondary" style="width: 100%; margin-top: 24px;">
+          Schließen
+        </button>
       </div>
     </div>
   </div>
@@ -443,6 +549,11 @@ const showProfileSettings = ref(false);
 const profilePicture = ref(null);
 const newUsername = ref('');
 const fileInput = ref(null);
+const showPlayerProfile = ref(false);
+const selectedPlayer = ref(null);
+const userBadges = ref([]);
+const selectedBadge = ref(null);
+const selectedBadgeObj = ref(null);
 
 // Check if user is already authenticated via Google OAuth
 onMounted(async () => {
@@ -455,6 +566,9 @@ onMounted(async () => {
       user.value = userData.username;
       profilePicture.value = userData.profilePicture;
       newUsername.value = userData.username;
+      userBadges.value = userData.badges || [];
+      selectedBadge.value = userData.selectedBadge;
+      selectedBadgeObj.value = userData.selectedBadgeObj;
       // Also log in via socket
       socket.emit('user:login', userData.username);
     }
@@ -787,6 +901,50 @@ async function updateUsername() {
     }
   } catch (error) {
     showMessage('Fehler beim Aktualisieren des Benutzernamens', 'error');
+    console.error(error);
+  }
+}
+
+async function openPlayerProfile(username) {
+  try {
+    const response = await fetch(`/api/player/${encodeURIComponent(username)}`, {
+      credentials: 'include'
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      selectedPlayer.value = data;
+      showPlayerProfile.value = true;
+    } else {
+      showMessage('Spielerprofil konnte nicht geladen werden', 'error');
+    }
+  } catch (error) {
+    showMessage('Fehler beim Laden des Spielerprofils', 'error');
+    console.error(error);
+  }
+}
+
+async function updateSelectedBadge(badgeId) {
+  try {
+    const response = await fetch('/api/update-selected-badge', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ badgeId })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      selectedBadge.value = data.selectedBadge;
+      selectedBadgeObj.value = data.selectedBadgeObj;
+      showMessage('Badge aktualisiert!', 'success');
+    } else {
+      showMessage('Badge konnte nicht aktualisiert werden', 'error');
+    }
+  } catch (error) {
+    showMessage('Fehler beim Aktualisieren des Badges', 'error');
     console.error(error);
   }
 }

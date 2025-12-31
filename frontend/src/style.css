@@ -1079,11 +1079,14 @@ button:disabled:hover {
   align-items: center;
   gap: 16px;
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .leaderboard-entry:hover {
   background: #1f2224;
   border-color: #3a3d3f;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .leaderboard-entry.is-current-user {
@@ -1219,4 +1222,233 @@ button:disabled:hover {
   .reset-countdown {
     font-size: 1.2rem;
   }
+}
+
+/* Player Profile Modal */
+.player-profile-modal {
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.profile-header {
+  text-align: center;
+  padding: 20px 0;
+  border-bottom: 1px solid #2a2d2f;
+  margin-bottom: 24px;
+}
+
+.profile-pic-large {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  background-color: #2a2d2f;
+  margin: 0 auto;
+  border: 3px solid #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.badges-section {
+  margin-bottom: 24px;
+}
+
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+}
+
+.badge-item {
+  background: #1a1d1f;
+  border: 2px solid #ffffff;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.badge-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+.badge-icon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.badge-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.no-badges {
+  background: #1a1d1f;
+  border: 2px dashed #2a2d2f;
+  border-radius: 8px;
+  padding: 32px;
+  text-align: center;
+}
+
+.stats-section {
+  margin-bottom: 24px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.stat-card {
+  background: #1a1d1f;
+  border: 1px solid #2a2d2f;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  background: #1f2224;
+  border-color: #3a3d3f;
+}
+
+.stat-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.stat-card-label {
+  font-size: 0.85rem;
+  color: #8a8d8f;
+  margin-bottom: 8px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-card-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .player-profile-modal {
+    max-height: 85vh;
+  }
+
+  .profile-pic-large {
+    width: 100px;
+    height: 100px;
+  }
+
+  .badges-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  }
+
+  .badge-icon {
+    font-size: 2rem;
+  }
+
+  .badge-name {
+    font-size: 0.7rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-card-value {
+    font-size: 1.5rem;
+  }
+}
+
+/* Badge display next to username */
+.user-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.user-badge:hover {
+  transform: scale(1.15);
+}
+
+.user-badge-small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.user-badge-small:hover {
+  transform: scale(1.15);
+}
+
+.user-badge-large {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.user-badge-large:hover {
+  transform: scale(1.15);
+}
+
+/* Badge selector in profile settings */
+.badge-selector-item {
+  background: #1a1d1f;
+  border: 2px solid #2a2d2f;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge-selector-item:hover {
+  background: #1f2224;
+  border-color: #3a3d3f;
+  transform: translateY(-2px);
+}
+
+.badge-selector-item.selected {
+  background: #2a3a2a;
+  border-color: #4a6a4a;
+  box-shadow: 0 0 0 2px #4a6a4a33;
+}
+
+.badge-icon-large {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.badge-name-small {
+  font-size: 0.75rem;
+  color: #8a8d8f;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
