@@ -278,6 +278,27 @@ io.on('connection', (socket) => {
     console.log(`Party created: ${code} by ${user.username}`);
   });
 
+  // Get Active Parties
+  socket.on('party:get_active', () => {
+    const user = socketUsers.get(socket.id);
+    if (!user) return socket.emit('error', 'Not logged in');
+
+    // Convert parties map to array with relevant info
+    const activeParties = Array.from(parties.values()).map(party => ({
+      code: party.code,
+      name: party.name,
+      mode: party.mode,
+      outMode: party.outMode,
+      playerCount: party.players.length,
+      players: party.players.map(p => ({
+        username: p.username,
+        profilePicture: p.profilePicture
+      }))
+    }));
+
+    socket.emit('party:active_list', activeParties);
+  });
+
   // Join Party
   socket.on('party:join', (code) => {
     const user = socketUsers.get(socket.id);
@@ -323,6 +344,12 @@ io.on('connection', (socket) => {
 
     const party = parties.get(user.partyCode);
     if (!party) return;
+
+    // Check if minimum players requirement is met
+    if (party.players.length < 2) {
+      socket.emit('error', 'Mindestens 2 Spieler erforderlich, um zu starten!');
+      return;
+    }
 
     const currentPlayer = party.players[party.currentPlayerIndex];
 

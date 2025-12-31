@@ -911,3 +911,117 @@ button:disabled:hover {
     font-size: 18px;
   }
 }
+
+/* Active Parties List */
+.active-parties-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.active-party-card {
+  background: #1a1d1f;
+  border: 1px solid #2a2d2f;
+  border-radius: 8px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.active-party-card:hover {
+  background: #1f2224;
+  border-color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+}
+
+.active-party-card:active {
+  transform: translateY(0);
+}
+
+.party-header-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.party-header-info h3 {
+  font-size: 1.4rem;
+  color: #e0e0e0;
+  margin: 0;
+  flex: 1;
+}
+
+.party-code-badge {
+  background: #1f2224;
+  color: #e0e0e0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  border: 1px solid #3a3d3f;
+}
+
+.party-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  color: #8a8d8f;
+  font-size: 0.9rem;
+}
+
+.player-count {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.party-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.party-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #0f1415;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #2a2d2f;
+  font-size: 0.85rem;
+  color: #e0e0e0;
+}
+
+.profile-pic-tiny {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid #3a3d3f;
+}
+
+@media (max-width: 480px) {
+  .active-party-card {
+    padding: 16px;
+  }
+
+  .party-header-info h3 {
+    font-size: 1.2rem;
+  }
+
+  .party-code-badge {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+  }
+
+  .party-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}

@@ -97,20 +97,40 @@
       <div class="card">
         <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
           <button @click="currentView = 'playMenu'" class="back-btn">← Zurück</button>
-          <h2 style="margin: 0; flex: 1; text-align: center;">Party beitreten</h2>
-          <div style="width: 108px;"></div>
+          <h2 style="margin: 0; flex: 1; text-align: center;">Aktive Partys</h2>
+          <button @click="refreshActiveParties" class="settings-btn" title="Aktualisieren">
+            <i class="fas fa-sync-alt"></i>
+          </button>
         </div>
 
-        <div class="form-group">
-          <label>Party Code</label>
-          <input
-            v-model="joinCode"
-            @keyup.enter="joinParty"
-            placeholder="6-stelliger Code"
-            style="text-transform: uppercase;"
-          />
+        <div v-if="activeParties.length === 0" style="text-align: center; color: #8a8d8f; padding: 40px 20px;">
+          <p style="font-size: 1.1rem; margin-bottom: 12px;">Keine aktiven Partys verfügbar</p>
+          <p style="font-size: 0.9rem;">Erstelle eine neue Party, um zu beginnen!</p>
         </div>
-        <button @click="joinParty">Beitreten</button>
+
+        <div v-else class="active-parties-list">
+          <div
+            v-for="party in activeParties"
+            :key="party.code"
+            class="active-party-card"
+            @click="joinPartyByCode(party.code)"
+          >
+            <div class="party-header-info">
+              <h3>{{ party.name }}</h3>
+              <span class="party-code-badge">{{ party.code }}</span>
+            </div>
+            <div class="party-details">
+              <span class="party-mode">{{ party.mode }} • {{ party.outMode === 'double' ? 'Double Out' : 'Single Out' }}</span>
+              <span class="player-count">{{ party.playerCount }} Spieler</span>
+            </div>
+            <div class="party-players">
+              <div v-for="player in party.players" :key="player.username" class="party-player">
+                <div v-if="player.profilePicture" class="profile-pic-tiny" :style="{ backgroundImage: `url(${player.profilePicture})` }"></div>
+                <span>{{ player.username }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -353,7 +373,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted, onMounted } from 'vue';
+import { ref, computed, onUnmounted, onMounted, watch } from 'vue';
 import { io } from 'socket.io-client';
 
 const socket = io({
@@ -364,7 +384,7 @@ const socket = io({
 const user = ref(null);
 const party = ref(null);
 const currentView = ref('home'); // 'home', 'playMenu', 'lobby', 'game', 'leaderboard'
-const joinCode = ref('');
+const activeParties = ref([]);
 const createForm = ref({
   partyName: '',
   mode: '501',
@@ -401,6 +421,13 @@ onMounted(async () => {
 // Dartboard numbers in standard order (clockwise from top)
 const boardNumbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 
+// Watch for view changes to refresh active parties
+watch(currentView, (newView) => {
+  if (newView === 'joinParty') {
+    refreshActiveParties();
+  }
+});
+
 // Computed
 const currentPlayer = computed(() => {
   if (!party.value) return null;
@@ -435,12 +462,20 @@ function leaveParty() {
   socket.emit('party:leave');
   party.value = null;
   currentView.value = 'playMenu';
-  joinCode.value = '';
+  activeParties.value = [];
   createForm.value = {
     partyName: '',
     mode: '501',
     outMode: 'double'
   };
+}
+
+function refreshActiveParties() {
+  socket.emit('party:get_active');
+}
+
+function joinPartyByCode(code) {
+  socket.emit('party:join', code);
 }
 
 function restartGame() {
@@ -454,11 +489,6 @@ function createParty() {
     return;
   }
   socket.emit('party:create', createForm.value);
-}
-
-function joinParty() {
-  if (!joinCode.value.trim()) return;
-  socket.emit('party:join', joinCode.value.trim().toUpperCase());
 }
 
 function handleRingClick(num, ringMultiplier) {
@@ -683,6 +713,10 @@ socket.on('party:joined', (data) => {
 
 socket.on('party:state', (data) => {
   party.value = data;
+});
+
+socket.on('party:active_list', (data) => {
+  activeParties.value = data;
 });
 
 socket.on('game:bust', (msg) => {
