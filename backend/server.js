@@ -164,6 +164,42 @@ app.post('/api/update-username', async (req, res) => {
   }
 });
 
+// Get leaderboard
+app.get('/api/leaderboard', async (req, res) => {
+  try {
+    // Get top 100 players sorted by ELO
+    const users = await User.find({})
+      .sort({ elo: -1, wins: -1 })
+      .limit(100)
+      .select('username profilePicture elo wins losses');
+
+    // Get next reset date (use first user's reset date or calculate new one)
+    let nextResetDate;
+    if (users.length > 0 && users[0].weeklyResetDate) {
+      nextResetDate = users[0].weeklyResetDate;
+    } else {
+      nextResetDate = getNextResetDate();
+    }
+
+    res.json({
+      leaderboard: users.map((user, index) => ({
+        rank: index + 1,
+        username: user.username,
+        profilePicture: user.profilePicture,
+        elo: user.elo,
+        wins: user.wins,
+        losses: user.losses,
+        winRate: user.wins + user.losses > 0
+          ? Math.round((user.wins / (user.wins + user.losses)) * 100)
+          : 0
+      })),
+      nextResetDate
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ===== SOCKET.IO SETUP =====
 
 const httpServer = createServer(app);
@@ -195,6 +231,93 @@ function broadcastPartyState(partyCode) {
   if (!party) return;
   io.to(partyCode).emit('party:state', party);
 }
+
+// Helper: Update ELO for winner and loser
+async function updateEloRatings(winnerUsername, loserUsername) {
+  try {
+    const winner = await User.findOne({ username: winnerUsername });
+    const loser = await User.findOne({ username: loserUsername });
+
+    if (!winner || !loser) {
+      console.log('Could not find users for ELO update');
+      return;
+    }
+
+    // Calculate ELO changes
+    const { winnerChange, loserChange } = calculateEloChange(winner.elo, loser.elo);
+
+    // Update ELO and stats
+    winner.elo += winnerChange;
+    winner.wins += 1;
+    if (!winner.weeklyResetDate) {
+      winner.weeklyResetDate = getNextResetDate();
+    }
+
+    loser.elo = Math.max(0, loser.elo + loserChange); // Don't go below 0
+    loser.losses += 1;
+    if (!loser.weeklyResetDate) {
+      loser.weeklyResetDate = getNextResetDate();
+    }
+
+    await winner.save();
+    await loser.save();
+
+    console.log(`ELO Update - ${winnerUsername}: ${winner.elo - winnerChange} → ${winner.elo} (+${winnerChange})`);
+    console.log(`ELO Update - ${loserUsername}: ${loser.elo - loserChange} → ${loser.elo} (${loserChange})`);
+  } catch (error) {
+    console.error('Error updating ELO:', error);
+  }
+}
+
+// Helper: Calculate ELO Change
+function calculateEloChange(winnerElo, loserElo) {
+  const K = 32; // K-factor (sensitivity of rating changes)
+  const expectedWin = 1 / (1 + Math.pow(10, (loserElo - winnerElo) / 400));
+  const expectedLoss = 1 - expectedWin;
+
+  return {
+    winnerChange: Math.round(K * (1 - expectedWin)),
+    loserChange: Math.round(K * (0 - expectedLoss))
+  };
+}
+
+// Helper: Get next Monday 00:00:00 UTC
+function getNextResetDate() {
+  const now = new Date();
+  const nextMonday = new Date(now);
+
+  // Get days until next Monday (1 = Monday, 0 = Sunday)
+  const daysUntilMonday = (8 - nextMonday.getUTCDay()) % 7;
+  const daysToAdd = daysUntilMonday === 0 ? 7 : daysUntilMonday;
+
+  nextMonday.setUTCDate(nextMonday.getUTCDate() + daysToAdd);
+  nextMonday.setUTCHours(0, 0, 0, 0);
+
+  return nextMonday;
+}
+
+// Helper: Check and perform weekly reset if needed
+async function checkWeeklyReset() {
+  const now = new Date();
+  const users = await User.find({});
+
+  for (const user of users) {
+    // If no reset date set, or if it's past the reset date
+    if (!user.weeklyResetDate || now >= user.weeklyResetDate) {
+      user.elo = 1000;
+      user.wins = 0;
+      user.losses = 0;
+      user.weeklyResetDate = getNextResetDate();
+      await user.save();
+      console.log(`Reset ELO for user: ${user.username}`);
+    }
+  }
+}
+
+// Run weekly reset check every hour
+setInterval(checkWeeklyReset, 60 * 60 * 1000);
+// Run on startup
+checkWeeklyReset();
 
 // Helper: Handle Submit Throw
 function handleSubmitThrow(partyCode) {
@@ -415,6 +538,15 @@ io.on('connection', (socket) => {
             timestamp: Date.now()
           });
           party.currentShots = [];
+
+          // Update ELO for 1v1 games
+          if (party.players.length === 2) {
+            const loser = party.players.find(p => p.username !== currentPlayer.username);
+            if (loser) {
+              updateEloRatings(currentPlayer.username, loser.username);
+            }
+          }
+
           io.to(user.partyCode).emit('game:winner', currentPlayer.username);
           broadcastPartyState(user.partyCode);
           return;
@@ -437,6 +569,15 @@ io.on('connection', (socket) => {
           timestamp: Date.now()
         });
         party.currentShots = [];
+
+        // Update ELO for 1v1 games
+        if (party.players.length === 2) {
+          const loser = party.players.find(p => p.username !== currentPlayer.username);
+          if (loser) {
+            updateEloRatings(currentPlayer.username, loser.username);
+          }
+        }
+
         io.to(user.partyCode).emit('game:winner', currentPlayer.username);
         broadcastPartyState(user.partyCode);
         return;

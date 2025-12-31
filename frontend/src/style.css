@@ -1025,3 +1025,187 @@ button:disabled:hover {
     gap: 6px;
   }
 }
+
+/* Leaderboard Styles */
+.reset-timer {
+  background: #1f2224;
+  border: 1px solid #3a3d3f;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.reset-label {
+  color: #8a8d8f;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.reset-countdown {
+  color: #ffffff;
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 2px;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leaderboard-entry {
+  background: #1a1d1f;
+  border: 1px solid #2a2d2f;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s ease;
+}
+
+.leaderboard-entry:hover {
+  background: #1f2224;
+  border-color: #3a3d3f;
+}
+
+.leaderboard-entry.is-current-user {
+  border-color: #ffffff;
+  background: #1f2224;
+  box-shadow: 0 0 0 1px #ffffff;
+}
+
+.leaderboard-rank {
+  min-width: 50px;
+  text-align: center;
+}
+
+.rank-medal {
+  font-size: 2rem;
+}
+
+.rank-number {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #8a8d8f;
+}
+
+.leaderboard-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.player-username {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #e0e0e0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leaderboard-stats {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 60px;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #8a8d8f;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #e0e0e0;
+}
+
+.elo-value {
+  color: #ffffff;
+  font-size: 1.3rem;
+}
+
+@media (max-width: 768px) {
+  .leaderboard-entry {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .leaderboard-rank {
+    min-width: 40px;
+  }
+
+  .rank-medal {
+    font-size: 1.5rem;
+  }
+
+  .rank-number {
+    font-size: 1.1rem;
+  }
+
+  .leaderboard-player {
+    flex: 1 1 100%;
+    order: -1;
+  }
+
+  .leaderboard-stats {
+    flex: 1 1 100%;
+    justify-content: space-around;
+    gap: 12px;
+  }
+
+  .stat-item {
+    min-width: auto;
+  }
+
+  .reset-countdown {
+    font-size: 1.4rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .leaderboard-entry {
+    padding: 12px;
+  }
+
+  .player-username {
+    font-size: 1rem;
+  }
+
+  .stat-value {
+    font-size: 1rem;
+  }
+
+  .elo-value {
+    font-size: 1.1rem;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+  }
+
+  .reset-countdown {
+    font-size: 1.2rem;
+  }
+}

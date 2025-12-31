@@ -51,12 +51,55 @@
     <!-- Leaderboard Screen -->
     <div v-else-if="currentView === 'leaderboard'">
       <div class="card">
-        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 32px;">
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
           <button @click="currentView = 'home'" class="back-btn">← Zurück</button>
           <h2 style="margin: 0; flex: 1; text-align: center;">Leaderboard</h2>
-          <div style="width: 108px;"></div>
+          <button @click="loadLeaderboard" class="settings-btn" title="Aktualisieren">
+            <i class="fas fa-sync-alt"></i>
+          </button>
         </div>
-        <p style="color: #8a8d8f; text-align: center;">Coming soon</p>
+
+        <div v-if="leaderboardResetTime" class="reset-timer">
+          <div class="reset-label">Wöchentlicher Reset in:</div>
+          <div class="reset-countdown">{{ leaderboardResetTime }}</div>
+        </div>
+
+        <div v-if="leaderboard.length === 0" style="text-align: center; color: #8a8d8f; padding: 40px 20px;">
+          <p style="font-size: 1.1rem;">Keine Daten verfügbar</p>
+        </div>
+
+        <div v-else class="leaderboard-list">
+          <div
+            v-for="entry in leaderboard"
+            :key="entry.rank"
+            :class="['leaderboard-entry', { 'is-current-user': entry.username === user }]"
+          >
+            <div class="leaderboard-rank">
+              <span v-if="entry.rank === 1" class="rank-medal">🥇</span>
+              <span v-else-if="entry.rank === 2" class="rank-medal">🥈</span>
+              <span v-else-if="entry.rank === 3" class="rank-medal">🥉</span>
+              <span v-else class="rank-number">#{{ entry.rank }}</span>
+            </div>
+            <div class="leaderboard-player">
+              <div v-if="entry.profilePicture" class="profile-pic-small" :style="{ backgroundImage: `url(${entry.profilePicture})` }"></div>
+              <span class="player-username">{{ entry.username }}</span>
+            </div>
+            <div class="leaderboard-stats">
+              <div class="stat-item">
+                <span class="stat-label">ELO</span>
+                <span class="stat-value elo-value">{{ entry.elo }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">W/L</span>
+                <span class="stat-value">{{ entry.wins }}/{{ entry.losses }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Win%</span>
+                <span class="stat-value">{{ entry.winRate }}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -385,6 +428,9 @@ const user = ref(null);
 const party = ref(null);
 const currentView = ref('home'); // 'home', 'playMenu', 'lobby', 'game', 'leaderboard'
 const activeParties = ref([]);
+const leaderboard = ref([]);
+const leaderboardResetTime = ref('');
+const leaderboardResetDate = ref(null);
 const createForm = ref({
   partyName: '',
   mode: '501',
@@ -421,12 +467,21 @@ onMounted(async () => {
 // Dartboard numbers in standard order (clockwise from top)
 const boardNumbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 
-// Watch for view changes to refresh active parties
+// Watch for view changes to refresh active parties and leaderboard
 watch(currentView, (newView) => {
   if (newView === 'joinParty') {
     refreshActiveParties();
+  } else if (newView === 'leaderboard') {
+    loadLeaderboard();
   }
 });
+
+// Update countdown timer every second
+setInterval(() => {
+  if (leaderboardResetDate.value) {
+    updateResetCountdown();
+  }
+}, 1000);
 
 // Computed
 const currentPlayer = computed(() => {
@@ -476,6 +531,47 @@ function refreshActiveParties() {
 
 function joinPartyByCode(code) {
   socket.emit('party:join', code);
+}
+
+async function loadLeaderboard() {
+  try {
+    const response = await fetch('/api/leaderboard', {
+      credentials: 'include'
+    });
+    if (response.ok) {
+      const data = await response.json();
+      leaderboard.value = data.leaderboard;
+      leaderboardResetDate.value = new Date(data.nextResetDate);
+      updateResetCountdown();
+    }
+  } catch (error) {
+    console.error('Failed to load leaderboard:', error);
+  }
+}
+
+function updateResetCountdown() {
+  if (!leaderboardResetDate.value) return;
+
+  const now = new Date();
+  const diff = leaderboardResetDate.value - now;
+
+  if (diff <= 0) {
+    leaderboardResetTime.value = 'Resetting...';
+    // Reload leaderboard when reset happens
+    loadLeaderboard();
+    return;
+  }
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+  let countdown = '';
+  if (days > 0) countdown += `${days}d `;
+  countdown += `${hours}h ${minutes}m ${seconds}s`;
+
+  leaderboardResetTime.value = countdown;
 }
 
 function restartGame() {
