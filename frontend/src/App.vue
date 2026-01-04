@@ -163,11 +163,14 @@
             v-for="party in activeParties"
             :key="party.code"
             class="active-party-card"
-            @click="joinPartyByCode(party.code)"
           >
             <div class="party-header-info">
               <h3>{{ party.name }}</h3>
-              <span class="party-code-badge">{{ party.code }}</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span v-if="party.gameState === 'active'" class="game-state-badge active">Aktiv</span>
+                <span v-else class="game-state-badge lobby">Lobby</span>
+                <span class="party-code-badge">{{ party.code }}</span>
+              </div>
             </div>
             <div class="party-details">
               <span class="party-mode">{{ party.mode }} • {{ party.outMode === 'double' ? 'Double Out' : 'Single Out' }}</span>
@@ -182,6 +185,22 @@
                 </div>
               </div>
             </div>
+            <div class="party-actions">
+              <button
+                v-if="party.gameState === 'active'"
+                @click.stop="spectateParty(party.code)"
+                class="spectate-btn"
+              >
+                <i class="fas fa-eye"></i> Zuschauen
+              </button>
+              <button
+                v-else
+                @click.stop="joinPartyByCode(party.code)"
+                class="join-btn"
+              >
+                Beitreten
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -192,7 +211,10 @@
       <div class="party-header-compact">
         <button @click="leaveParty" class="back-btn">← Party verlassen</button>
         <div class="party-code">{{ party.code }}</div>
-        <div class="party-mode">{{ party.mode }} • {{ party.outMode === 'double' ? 'Double Out' : 'Single Out' }}</div>
+        <div class="party-mode">
+          {{ party.mode }} • {{ party.outMode === 'double' ? 'Double Out' : 'Single Out' }}
+          <span v-if="isSpectator" class="spectator-badge">👁️ Zuschauer</span>
+        </div>
       </div>
 
       <div v-if="message" :class="'alert alert-' + message.type">
@@ -698,7 +720,15 @@ const currentPlayer = computed(() => {
 
 const isCurrentPlayer = computed(() => {
   if (!party.value || !user.value) return false;
+  // Spectators can never be current player
+  if (isSpectator.value) return false;
   return currentPlayer.value?.username === user.value;
+});
+
+const isSpectator = computed(() => {
+  if (!party.value || !user.value) return false;
+  // Check if user is in spectators list
+  return party.value.spectators?.some(s => s.username === user.value) || false;
 });
 
 const isMobile = computed(() => {
@@ -742,6 +772,10 @@ function refreshActiveParties() {
 
 function joinPartyByCode(code) {
   socket.emit('party:join', code);
+}
+
+function spectateParty(code) {
+  socket.emit('party:spectate', code);
 }
 
 async function loadLeaderboard() {
@@ -1118,6 +1152,10 @@ socket.on('party:created', (data) => {
 });
 
 socket.on('party:joined', (data) => {
+  party.value = data;
+});
+
+socket.on('party:spectating', (data) => {
   party.value = data;
 });
 

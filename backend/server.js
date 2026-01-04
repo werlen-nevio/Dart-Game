@@ -499,6 +499,8 @@ io.on('connection', (socket) => {
         profilePicture: user.profilePicture,
         selectedBadgeObj: user.selectedBadgeObj
       }],
+      spectators: [],
+      gameState: 'lobby', // 'lobby' or 'active'
       currentPlayerIndex: 0,
       currentShots: [],
       history: []
@@ -525,6 +527,7 @@ io.on('connection', (socket) => {
       mode: party.mode,
       outMode: party.outMode,
       playerCount: party.players.length,
+      gameState: party.gameState || 'lobby',
       players: party.players.map(p => ({
         username: p.username,
         profilePicture: p.profilePicture,
@@ -542,6 +545,11 @@ io.on('connection', (socket) => {
 
     const party = parties.get(code);
     if (!party) return socket.emit('error', 'Party not found');
+
+    // Check if game is already active
+    if (party.gameState === 'active') {
+      return socket.emit('error', 'Spiel läuft bereits! Du kannst nur als Zuschauer beitreten.');
+    }
 
     // Check if already in party
     const existing = party.players.find(p => p.username === user.username);
@@ -575,6 +583,55 @@ io.on('connection', (socket) => {
     console.log(`${user.username} joined party ${code}`);
   });
 
+  // Spectate Party
+  socket.on('party:spectate', (code) => {
+    const user = socketUsers.get(socket.id);
+    if (!user) return socket.emit('error', 'Not logged in');
+
+    const party = parties.get(code);
+    if (!party) return socket.emit('error', 'Party not found');
+
+    // Initialize spectators array if it doesn't exist (for backwards compatibility)
+    if (!party.spectators) {
+      party.spectators = [];
+    }
+
+    // Check if already a player
+    const isPlayer = party.players.find(p => p.username === user.username);
+    if (isPlayer) {
+      // Just rejoin as player
+      user.partyCode = code;
+      socket.join(code);
+      socket.emit('party:joined', party);
+      broadcastPartyState(code);
+      return;
+    }
+
+    // Check if already spectating
+    const existingSpectator = party.spectators.find(s => s.username === user.username);
+    if (!existingSpectator) {
+      party.spectators.push({
+        username: user.username,
+        socketId: socket.id,
+        profilePicture: user.profilePicture,
+        selectedBadgeObj: user.selectedBadgeObj
+      });
+    } else {
+      // Reconnect: update socketId
+      existingSpectator.socketId = socket.id;
+      existingSpectator.profilePicture = user.profilePicture;
+      existingSpectator.selectedBadgeObj = user.selectedBadgeObj;
+    }
+
+    user.partyCode = code;
+    user.isSpectator = true;
+    socket.join(code);
+
+    socket.emit('party:spectating', party);
+    broadcastPartyState(code);
+    console.log(`${user.username} is spectating party ${code}`);
+  });
+
   // Add to Current Throw
   socket.on('game:add_throw', (shotData) => {
     const user = socketUsers.get(socket.id);
@@ -587,6 +644,12 @@ io.on('connection', (socket) => {
     if (party.players.length < 2) {
       socket.emit('error', 'Mindestens 2 Spieler erforderlich, um zu starten!');
       return;
+    }
+
+    // Set game state to active on first throw
+    if (party.gameState === 'lobby') {
+      party.gameState = 'active';
+      console.log(`Party ${user.partyCode} game state changed to active`);
     }
 
     const currentPlayer = party.players[party.currentPlayerIndex];
@@ -767,6 +830,7 @@ io.on('connection', (socket) => {
     });
 
     // Reset game state
+    party.gameState = 'lobby';
     party.currentPlayerIndex = 0;
     party.currentShots = [];
     party.history = [];
@@ -783,21 +847,30 @@ io.on('connection', (socket) => {
     const party = parties.get(user.partyCode);
     if (!party) return;
 
-    // Remove player from party
-    party.players = party.players.filter(p => p.username !== user.username);
-
-    // If no players left, delete party
-    if (party.players.length === 0) {
-      parties.delete(user.partyCode);
-      console.log(`Party ${user.partyCode} deleted (no players)`);
-    } else {
-      // Adjust current player index if needed
-      if (party.currentPlayerIndex >= party.players.length) {
-        party.currentPlayerIndex = 0;
+    // Check if user is a spectator
+    if (user.isSpectator) {
+      // Remove from spectators
+      if (party.spectators) {
+        party.spectators = party.spectators.filter(s => s.username !== user.username);
       }
-      broadcastPartyState(user.partyCode);
+      user.isSpectator = false;
+    } else {
+      // Remove player from party
+      party.players = party.players.filter(p => p.username !== user.username);
+
+      // If no players left, delete party
+      if (party.players.length === 0) {
+        parties.delete(user.partyCode);
+        console.log(`Party ${user.partyCode} deleted (no players)`);
+      } else {
+        // Adjust current player index if needed
+        if (party.currentPlayerIndex >= party.players.length) {
+          party.currentPlayerIndex = 0;
+        }
+      }
     }
 
+    broadcastPartyState(user.partyCode);
     socket.leave(user.partyCode);
     user.partyCode = null;
   });
