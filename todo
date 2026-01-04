@@ -1,5 +1,3 @@
-- dont let players join active game
-- let player spectate active game
 - if player leaves during game, 20 sec timer to rejoin else other player wins
 - add best checkout
 - save last week leaderboard

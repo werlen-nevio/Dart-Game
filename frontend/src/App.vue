@@ -213,7 +213,7 @@
         <div class="party-code">{{ party.code }}</div>
         <div class="party-mode">
           {{ party.mode }} • {{ party.outMode === 'double' ? 'Double Out' : 'Single Out' }}
-          <span v-if="isSpectator" class="spectator-badge">👁️ Zuschauer</span>
+          <span v-if="isSpectator" class="spectator-badge"><i class="fas fa-eye"></i> Zuschauer</span>
         </div>
       </div>
 

@@ -2035,6 +2035,10 @@ button:disabled:hover {
   border: 1px solid #3a3d3f;
 }
 
+.spectate-btn i {
+  margin-right: 6px;
+}
+
 .spectate-btn:hover {
   background: #3a3d3f;
   border-color: #4a4d4f;
@@ -2061,6 +2065,10 @@ button:disabled:hover {
   font-size: 0.75rem;
   font-weight: 600;
   color: #64b5f6;
+}
+
+.spectator-badge i {
+  margin-right: 4px;
 }
 
 /* Remove hover effect from active party cards since buttons handle interaction */
