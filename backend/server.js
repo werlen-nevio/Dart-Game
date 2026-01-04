@@ -12,6 +12,7 @@ import { nanoid } from 'nanoid';
 import { connectDB } from './config/database.js';
 import { setupPassport } from './config/passport.js';
 import User from './models/User.js';
+import LeaderboardHistory from './models/LeaderboardHistory.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -299,6 +300,67 @@ app.get('/api/player/:username', async (req, res) => {
   }
 });
 
+// Get list of available historical leaderboards
+app.get('/api/leaderboard/history', async (req, res) => {
+  try {
+    // Get all historical leaderboards, sorted by most recent first
+    const histories = await LeaderboardHistory.find({})
+      .select('weekStartDate weekEndDate')
+      .sort({ weekEndDate: -1 })
+      .limit(52); // Last year of weeks
+
+    res.json({
+      histories: histories.map(h => ({
+        weekStartDate: h.weekStartDate,
+        weekEndDate: h.weekEndDate
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get specific historical leaderboard
+app.get('/api/leaderboard/history/:weekEndDate', async (req, res) => {
+  try {
+    const weekEndDate = new Date(req.params.weekEndDate);
+
+    // Find the leaderboard for this week
+    const history = await LeaderboardHistory.findOne({
+      weekEndDate: {
+        $gte: new Date(weekEndDate.getTime() - 24 * 60 * 60 * 1000), // Allow 1 day tolerance
+        $lte: new Date(weekEndDate.getTime() + 24 * 60 * 60 * 1000)
+      }
+    });
+
+    if (!history) {
+      return res.status(404).json({ error: 'Leaderboard not found for this week' });
+    }
+
+    // Format the leaderboard data
+    const leaderboard = history.leaderboard.map(entry => ({
+      rank: entry.rank,
+      username: entry.username,
+      profilePicture: entry.profilePicture,
+      elo: entry.elo,
+      wins: entry.wins,
+      losses: entry.losses,
+      winRate: entry.wins + entry.losses > 0
+        ? Math.round((entry.wins / (entry.wins + entry.losses)) * 100)
+        : 0,
+      selectedBadgeObj: entry.selectedBadgeObj
+    }));
+
+    res.json({
+      weekStartDate: history.weekStartDate,
+      weekEndDate: history.weekEndDate,
+      leaderboard
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ===== SOCKET.IO SETUP =====
 
 const httpServer = createServer(app);
@@ -439,16 +501,78 @@ async function checkWeeklyReset() {
   const now = new Date();
   const users = await User.find({});
 
-  for (const user of users) {
-    // If no reset date set, or if it's past the reset date
-    if (!user.weeklyResetDate || now >= user.weeklyResetDate) {
-      user.elo = 1000;
-      user.wins = 0;
-      user.losses = 0;
-      user.weeklyResetDate = getNextResetDate();
-      await user.save();
-      console.log(`Reset ELO for user: ${user.username}`);
+  // Check if any user needs reset
+  const usersNeedingReset = users.filter(user =>
+    !user.weeklyResetDate || now >= user.weeklyResetDate
+  );
+
+  if (usersNeedingReset.length === 0) {
+    return; // No reset needed
+  }
+
+  // Save current leaderboard to history before resetting
+  try {
+    // Get top 100 players for the leaderboard snapshot
+    const leaderboardUsers = await User.find({})
+      .sort({ elo: -1, wins: -1 })
+      .limit(100);
+
+    if (leaderboardUsers.length > 0) {
+      // Calculate week start and end dates
+      const firstUserResetDate = leaderboardUsers[0].weeklyResetDate || now;
+      const weekEndDate = new Date(now);
+      const weekStartDate = new Date(firstUserResetDate);
+      weekStartDate.setDate(weekStartDate.getDate() - 7);
+
+      // Build leaderboard snapshot
+      const leaderboardSnapshot = leaderboardUsers.map((user, index) => {
+        const selectedBadgeObj = user.badges.find(badge => badge.id === user.selectedBadge);
+        return {
+          userId: user._id,
+          username: user.username,
+          profilePicture: user.profilePicture,
+          elo: user.elo,
+          wins: user.wins,
+          losses: user.losses,
+          rank: index + 1,
+          badges: user.badges.map(b => ({
+            id: b.id,
+            name: b.name,
+            description: b.description,
+            icon: b.icon
+          })),
+          selectedBadge: user.selectedBadge,
+          selectedBadgeObj: selectedBadgeObj ? {
+            id: selectedBadgeObj.id,
+            name: selectedBadgeObj.name,
+            description: selectedBadgeObj.description,
+            icon: selectedBadgeObj.icon
+          } : null
+        };
+      });
+
+      // Save to history
+      const historyEntry = new LeaderboardHistory({
+        weekStartDate,
+        weekEndDate,
+        leaderboard: leaderboardSnapshot
+      });
+
+      await historyEntry.save();
+      console.log(`Saved leaderboard history for week ${weekStartDate.toISOString()} - ${weekEndDate.toISOString()}`);
     }
+  } catch (error) {
+    console.error('Error saving leaderboard history:', error);
+  }
+
+  // Now perform the reset
+  for (const user of usersNeedingReset) {
+    user.elo = 1000;
+    user.wins = 0;
+    user.losses = 0;
+    user.weeklyResetDate = getNextResetDate();
+    await user.save();
+    console.log(`Reset ELO for user: ${user.username}`);
   }
 }
 

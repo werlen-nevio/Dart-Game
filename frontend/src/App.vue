@@ -81,9 +81,15 @@
       <div class="card">
         <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
           <button @click="currentView = 'home'" class="back-btn">← Zurück</button>
-          <h2 style="margin: 0; flex: 1; text-align: center;">Leaderboard</h2>
+          <h2 style="margin: 0; flex: 1; text-align: center;">Aktuelle Woche</h2>
           <button @click="loadLeaderboard" class="settings-btn" title="Aktualisieren">
             <i class="fas fa-sync-alt"></i>
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <button @click="currentView = 'leaderboardHistory'; loadLeaderboardHistories()" class="secondary" style="flex: 1; padding: 10px; font-size: 0.9rem;">
+            <i class="fas fa-history"></i> Vergangene Wochen
           </button>
         </div>
 
@@ -128,6 +134,90 @@
               <div class="stat-item">
                 <span class="stat-label">Win%</span>
                 <span class="stat-value">{{ entry.winRate }}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historical Leaderboard Screen -->
+    <div v-else-if="currentView === 'leaderboardHistory'">
+      <div class="card">
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+          <button @click="currentView = 'leaderboard'" class="back-btn">← Zurück</button>
+          <h2 style="margin: 0; flex: 1; text-align: center;">Leaderboard Archiv</h2>
+          <button @click="loadLeaderboardHistories" class="settings-btn" title="Aktualisieren">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+        </div>
+
+        <div v-if="!selectedHistoricalLeaderboard">
+          <p style="color: #8a8d8f; margin-bottom: 16px; text-align: center;">Wähle eine Woche aus:</p>
+
+          <div v-if="leaderboardHistories.length === 0" style="text-align: center; color: #8a8d8f; padding: 40px 20px;">
+            <p style="font-size: 1.1rem;">Keine Leaderboard-Historie verfügbar</p>
+          </div>
+
+          <div v-else class="history-week-list">
+            <div
+              v-for="history in leaderboardHistories"
+              :key="history.weekEndDate"
+              @click="loadHistoricalLeaderboard(history.weekEndDate)"
+              class="history-week-card"
+            >
+              <div class="week-date-range">
+                <i class="fas fa-calendar-alt"></i>
+                {{ formatDateRange(history.weekStartDate, history.weekEndDate) }}
+              </div>
+              <i class="fas fa-chevron-right"></i>
+            </div>
+          </div>
+        </div>
+
+        <div v-else>
+          <button @click="selectedHistoricalLeaderboard = null" class="back-btn" style="margin-bottom: 16px;">
+            ← Zurück zur Übersicht
+          </button>
+
+          <div class="historical-week-header">
+            <h3 style="margin: 0; color: #e0e0e0;">
+              {{ formatDateRange(selectedHistoricalLeaderboard.weekStartDate, selectedHistoricalLeaderboard.weekEndDate) }}
+            </h3>
+          </div>
+
+          <div class="leaderboard-list">
+            <div
+              v-for="entry in selectedHistoricalLeaderboard.leaderboard"
+              :key="entry.rank"
+              :class="['leaderboard-entry', { 'is-current-user': entry.username === user }]"
+            >
+              <div class="leaderboard-rank">
+                <span v-if="entry.rank === 1" class="rank-medal">🥇</span>
+                <span v-else-if="entry.rank === 2" class="rank-medal">🥈</span>
+                <span v-else-if="entry.rank === 3" class="rank-medal">🥉</span>
+                <span v-else class="rank-number">#{{ entry.rank }}</span>
+              </div>
+              <div class="leaderboard-player">
+                <div v-if="entry.profilePicture" class="profile-pic-small" :style="{ backgroundImage: `url(${entry.profilePicture})` }"></div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span class="player-username">{{ entry.username }}</span>
+                  <span v-if="entry.selectedBadgeObj" class="user-badge" :title="entry.selectedBadgeObj.name">{{ entry.selectedBadgeObj.icon }}</span>
+                </div>
+              </div>
+              <div class="leaderboard-stats">
+                <div class="stat-item">
+                  <span class="stat-label">ELO</span>
+                  <span class="stat-value elo-value">{{ entry.elo }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">W/L</span>
+                  <span class="stat-value">{{ entry.wins }}/{{ entry.losses }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Win%</span>
+                  <span class="stat-value">{{ entry.winRate }}%</span>
+                </div>
               </div>
             </div>
           </div>
@@ -682,11 +772,13 @@ const socket = io({
 // State
 const user = ref(null);
 const party = ref(null);
-const currentView = ref('home'); // 'home', 'playMenu', 'lobby', 'game', 'leaderboard'
+const currentView = ref('home'); // 'home', 'playMenu', 'lobby', 'game', 'leaderboard', 'leaderboardHistory'
 const activeParties = ref([]);
 const leaderboard = ref([]);
 const leaderboardResetTime = ref('');
 const leaderboardResetDate = ref(null);
+const leaderboardHistories = ref([]);
+const selectedHistoricalLeaderboard = ref(null);
 const createForm = ref({
   partyName: '',
   mode: '501',
@@ -899,6 +991,48 @@ function updateResetCountdown() {
   countdown += `${hours}h ${minutes}m ${seconds}s`;
 
   leaderboardResetTime.value = countdown;
+}
+
+async function loadLeaderboardHistories() {
+  try {
+    const response = await fetch('/api/leaderboard/history', {
+      credentials: 'include'
+    });
+    if (response.ok) {
+      const data = await response.json();
+      leaderboardHistories.value = data.histories;
+    }
+  } catch (error) {
+    console.error('Failed to load leaderboard histories:', error);
+  }
+}
+
+async function loadHistoricalLeaderboard(weekEndDate) {
+  try {
+    const response = await fetch(`/api/leaderboard/history/${encodeURIComponent(weekEndDate)}`, {
+      credentials: 'include'
+    });
+    if (response.ok) {
+      const data = await response.json();
+      selectedHistoricalLeaderboard.value = data;
+    } else {
+      showMessage('Leaderboard konnte nicht geladen werden', 'error');
+    }
+  } catch (error) {
+    console.error('Failed to load historical leaderboard:', error);
+    showMessage('Fehler beim Laden des Leaderboards', 'error');
+  }
+}
+
+function formatDateRange(startDate, endDate) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  const formatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' };
+  const startStr = start.toLocaleDateString('de-DE', formatOptions);
+  const endStr = end.toLocaleDateString('de-DE', formatOptions);
+
+  return `${startStr} - ${endStr}`;
 }
 
 function restartGame() {
