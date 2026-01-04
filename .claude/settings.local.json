@@ -16,7 +16,8 @@
       "Bash(docker restart:*)",
       "Bash(tree:*)",
       "Bash(wc:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(docker ps:*)"
     ]
   }
 }

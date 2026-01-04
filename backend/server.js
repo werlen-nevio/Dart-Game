@@ -379,6 +379,34 @@ async function updateEloRatings(winnerUsername, loserUsername) {
   }
 }
 
+// Helper: Apply ELO Penalty for disconnect
+async function applyEloPenalty(username, penalty) {
+  try {
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      console.log(`Could not find user ${username} for ELO penalty`);
+      return;
+    }
+
+    // Apply penalty
+    user.elo = Math.max(0, user.elo - penalty);
+    user.losses += 1;
+    user.allTimeLosses += 1;
+    user.totalGamesPlayed += 1;
+
+    if (!user.weeklyResetDate) {
+      user.weeklyResetDate = getNextResetDate();
+    }
+
+    await user.save();
+
+    console.log(`ELO Penalty - ${username}: ${user.elo + penalty} → ${user.elo} (-${penalty})`);
+  } catch (error) {
+    console.error('Error applying ELO penalty:', error);
+  }
+}
+
 // Helper: Calculate ELO Change
 function calculateEloChange(winnerElo, loserElo) {
   const K = 32; // K-factor (sensitivity of rating changes)
@@ -896,8 +924,45 @@ io.on('connection', (socket) => {
 
     const user = socketUsers.get(socket.id);
     if (user && user.partyCode) {
-      // Set a 20-second timer before removing from party
+      const party = parties.get(user.partyCode);
+
+      // Notify other players about the disconnect
+      if (party && party.gameState === 'active' && !user.isSpectator) {
+        const disconnectedPlayer = party.players.find(p => p.socketId === socket.id);
+        if (disconnectedPlayer) {
+          io.to(user.partyCode).emit('player:disconnected', {
+            username: user.username,
+            timeRemaining: 30
+          });
+        }
+      }
+
+      // Send countdown updates every second
+      let countdown = 30;
+      const countdownInterval = setInterval(() => {
+        countdown--;
+        const currentParty = parties.get(user.partyCode);
+        if (currentParty && currentParty.gameState === 'active') {
+          io.to(user.partyCode).emit('player:disconnect_countdown', {
+            username: user.username,
+            timeRemaining: countdown
+          });
+        }
+        if (countdown <= 0) {
+          clearInterval(countdownInterval);
+          disconnectCountdowns.delete(socket.id);
+        }
+      }, 1000);
+
+      disconnectCountdowns.set(socket.id, countdownInterval);
+
+      // Set a 30-second timer before removing from party
       const timer = setTimeout(() => {
+        if (disconnectCountdowns.has(socket.id)) {
+          clearInterval(disconnectCountdowns.get(socket.id));
+          disconnectCountdowns.delete(socket.id);
+        }
+
         const party = parties.get(user.partyCode);
         if (!party) {
           socketUsers.delete(socket.id);
@@ -905,8 +970,45 @@ io.on('connection', (socket) => {
           return;
         }
 
-        // Remove player from party
-        party.players = party.players.filter(p => p.socketId !== socket.id);
+        // Find the disconnected player
+        const disconnectedPlayer = party.players.find(p => p.socketId === socket.id);
+
+        // Check if game is active
+        if (party.gameState === 'active' && disconnectedPlayer) {
+          if (party.players.length === 2) {
+            // 1v1: Award win to the remaining player
+            const remainingPlayer = party.players.find(p => p.socketId !== socket.id);
+
+            if (remainingPlayer) {
+              console.log(`Player ${user.username} did not rejoin. Awarding win to ${remainingPlayer.username}`);
+
+              // Update ELO ratings
+              updateEloRatings(remainingPlayer.username, disconnectedPlayer.username);
+
+              // Emit winner event
+              io.to(user.partyCode).emit('game:winner', remainingPlayer.username);
+              io.to(user.partyCode).emit('error', `${disconnectedPlayer.username} hat das Spiel verlassen. ${remainingPlayer.username} gewinnt!`);
+            }
+          } else {
+            // Multi-player: Apply -50 ELO penalty to disconnected player
+            console.log(`Player ${user.username} left multi-player game. Applying -50 ELO penalty.`);
+
+            // Apply ELO penalty
+            applyEloPenalty(disconnectedPlayer.username, 50);
+
+            // Notify remaining players
+            io.to(user.partyCode).emit('error', `${disconnectedPlayer.username} hat das Spiel verlassen und verliert 50 ELO.`);
+          }
+        }
+
+        // Remove player from party (including spectators)
+        if (user.isSpectator) {
+          if (party.spectators) {
+            party.spectators = party.spectators.filter(s => s.socketId !== socket.id);
+          }
+        } else {
+          party.players = party.players.filter(p => p.socketId !== socket.id);
+        }
 
         // If no players left, delete party
         if (party.players.length === 0) {
@@ -922,11 +1024,11 @@ io.on('connection', (socket) => {
 
         socketUsers.delete(socket.id);
         disconnectTimers.delete(socket.id);
-        console.log(`User ${user.username} removed from party after 20s`);
-      }, 20000); // 20 seconds
+        console.log(`User ${user.username} removed from party after 30s`);
+      }, 30000); // 30 seconds
 
       disconnectTimers.set(socket.id, timer);
-      console.log(`User ${user.username} disconnected, 20s timer started`);
+      console.log(`User ${user.username} disconnected, 30s timer started`);
     } else {
       socketUsers.delete(socket.id);
     }

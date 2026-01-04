@@ -254,6 +254,22 @@
         {{ message.text }}
       </div>
 
+      <!-- Disconnected Player Modal -->
+      <div v-if="disconnectedPlayer && reconnectCountdown > 0" class="modal-overlay">
+        <div class="modal disconnect-modal">
+          <div class="disconnect-icon">⚠️</div>
+          <h3 style="font-size: 2rem; margin-bottom: 16px;">Spieler Disconnected</h3>
+          <p style="font-size: 1.5rem; margin: 24px 0; font-weight: 600;">
+            <strong>{{ disconnectedPlayer }}</strong> hat die Verbindung verloren
+          </p>
+          <div class="countdown-display">
+            <i class="fas fa-clock"></i>
+            <span class="countdown-number">{{ reconnectCountdown }}</span>
+            <span>Sekunden bis zum Sieg</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Current Shots Display -->
       <div class="current-shots-display">
         <div
@@ -682,6 +698,8 @@ const selectedBadge = ref(null);
 const selectedBadgeObj = ref(null);
 const selectedMultiplier = ref(1); // For mobile number input
 const windowWidth = ref(window.innerWidth);
+const disconnectedPlayer = ref(null);
+const reconnectCountdown = ref(0);
 
 // Update window width on resize
 const updateWindowWidth = () => {
@@ -1221,10 +1239,27 @@ socket.on('game:double_required', (msg) => {
 
 socket.on('game:winner', (username) => {
   winner.value = username;
+  // Clear disconnect countdown when game ends
+  disconnectedPlayer.value = null;
+  reconnectCountdown.value = 0;
 });
 
 socket.on('error', (msg) => {
   showMessage(msg, 'error');
+});
+
+socket.on('player:disconnected', (data) => {
+  disconnectedPlayer.value = data.username;
+  reconnectCountdown.value = data.timeRemaining;
+});
+
+socket.on('player:disconnect_countdown', (data) => {
+  reconnectCountdown.value = data.timeRemaining;
+});
+
+socket.on('player:reconnected', () => {
+  disconnectedPlayer.value = null;
+  reconnectCountdown.value = 0;
 });
 
 onUnmounted(() => {
