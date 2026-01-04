@@ -1821,3 +1821,171 @@ button:disabled:hover {
     font-size: 1rem;
   }
 }
+
+/* Mobile Number Input Styles */
+.mobile-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.multiplier-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.multiplier-btn {
+  padding: 14px 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid #3a3d3f;
+  background: #1a1d1f;
+  color: #8a8d8f;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+  min-height: 44px;
+}
+
+.multiplier-btn:hover:not(:disabled) {
+  background: #252829;
+  border-color: #4a4d4f;
+}
+
+.multiplier-btn.active {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #0f1415;
+}
+
+.multiplier-btn:active:not(:disabled) {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #0f1415;
+}
+
+.multiplier-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.number-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.number-btn {
+  aspect-ratio: 1;
+  padding: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 1px solid #ffffff;
+  background: #ffffff;
+  color: #0f1415;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+}
+
+.number-btn:hover:not(:disabled) {
+  background: #e0e0e0;
+  border-color: #e0e0e0;
+  transform: scale(1.05);
+}
+
+.number-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.number-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bull-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.bull-btn {
+  padding: 16px 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid #ffffff;
+  background: #ffffff;
+  color: #0f1415;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+  min-height: 44px;
+}
+
+.bull-btn:hover:not(:disabled) {
+  background: #e0e0e0;
+  border-color: #e0e0e0;
+}
+
+.bull-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.bull-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .number-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .number-btn {
+    font-size: 1rem;
+    min-height: 45px;
+  }
+
+  .multiplier-btn,
+  .bull-btn {
+    font-size: 0.9rem;
+    padding: 12px 8px;
+  }
+}
+
+@media (max-width: 375px) {
+  .mobile-input-container {
+    gap: 12px;
+  }
+
+  .multiplier-buttons,
+  .number-grid,
+  .bull-buttons {
+    gap: 6px;
+  }
+
+  .number-btn {
+    font-size: 0.95rem;
+    min-height: 40px;
+  }
+
+  .multiplier-btn,
+  .bull-btn {
+    font-size: 0.85rem;
+    padding: 10px 6px;
+  }
+}

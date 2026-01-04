@@ -235,8 +235,67 @@
           </div>
         </div>
 
-        <!-- Circular Dartboard -->
-        <div class="dartboard-circle">
+        <!-- Mobile Number Input -->
+        <div v-if="isMobile" class="mobile-input-container">
+          <!-- Multiplier Buttons -->
+          <div class="multiplier-buttons">
+            <button
+              @click="selectedMultiplier = 1"
+              :class="['multiplier-btn', { active: selectedMultiplier === 1 }]"
+              :disabled="!isCurrentPlayer"
+            >
+              Single
+            </button>
+            <button
+              @click="selectedMultiplier = 2"
+              :class="['multiplier-btn', { active: selectedMultiplier === 2 }]"
+              :disabled="!isCurrentPlayer"
+            >
+              Double
+            </button>
+            <button
+              @click="selectedMultiplier = 3"
+              :class="['multiplier-btn', { active: selectedMultiplier === 3 }]"
+              :disabled="!isCurrentPlayer"
+            >
+              Triple
+            </button>
+          </div>
+
+          <!-- Number Grid -->
+          <div class="number-grid">
+            <button
+              v-for="num in mobileNumbers"
+              :key="num"
+              @click="handleMobileNumberClick(num)"
+              :disabled="!isCurrentPlayer"
+              class="number-btn"
+            >
+              {{ num }}
+            </button>
+          </div>
+
+          <!-- Bull Buttons -->
+          <div class="bull-buttons">
+            <button
+              @click="handleMobileNumberClick(25)"
+              :disabled="!isCurrentPlayer"
+              class="bull-btn outer-bull"
+            >
+              Bull (25)
+            </button>
+            <button
+              @click="handleMobileNumberClick(50)"
+              :disabled="!isCurrentPlayer"
+              class="bull-btn bulls-eye"
+            >
+              Bulls Eye (50)
+            </button>
+          </div>
+        </div>
+
+        <!-- Circular Dartboard (Desktop Only) -->
+        <div v-else class="dartboard-circle">
           <svg viewBox="0 0 600 600" class="dartboard-svg-circle">
             <!-- Background -->
             <circle cx="300" cy="300" r="285" fill="#1a1a1a" stroke="#333" stroke-width="3"/>
@@ -335,7 +394,7 @@
 
         <!-- Control Buttons -->
         <div class="control-btns">
-          <button @click="addMiss" :disabled="!isCurrentPlayer || (party.currentShots && party.currentShots.length >= 3)" class="ctrl-btn miss-btn">Fehlwurf</button>
+          <button @click="addMiss" :disabled="!isCurrentPlayer || (party.currentShots && party.currentShots.length >= 3)" class="ctrl-btn miss-btn">Out</button>
           <button @click="submitThrow" :disabled="!isCurrentPlayer" class="ctrl-btn submit-btn">Nächster Spieler</button>
         </div>
       </div>
@@ -566,9 +625,17 @@ const selectedPlayer = ref(null);
 const userBadges = ref([]);
 const selectedBadge = ref(null);
 const selectedBadgeObj = ref(null);
+const selectedMultiplier = ref(1); // For mobile number input
+const windowWidth = ref(window.innerWidth);
+
+// Update window width on resize
+const updateWindowWidth = () => {
+  windowWidth.value = window.innerWidth;
+};
 
 // Check if user is already authenticated via Google OAuth
 onMounted(async () => {
+  window.addEventListener('resize', updateWindowWidth);
   try {
     const response = await fetch('/auth/user', {
       credentials: 'include'
@@ -592,6 +659,9 @@ onMounted(async () => {
 
 // Dartboard numbers in standard order (clockwise from top)
 const boardNumbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+
+// Sequential numbers for mobile (1-20)
+const mobileNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
 // Watch for view changes to refresh active parties and leaderboard
 watch(currentView, (newView) => {
@@ -629,6 +699,10 @@ const currentPlayer = computed(() => {
 const isCurrentPlayer = computed(() => {
   if (!party.value || !user.value) return false;
   return currentPlayer.value?.username === user.value;
+});
+
+const isMobile = computed(() => {
+  return windowWidth.value <= 768;
 });
 
 // Methods
@@ -801,6 +875,34 @@ function getRingColor(index) {
 
 function submitThrow() {
   socket.emit('game:submit_throw');
+}
+
+function handleMobileNumberClick(num) {
+  if (!isCurrentPlayer.value) return;
+
+  let value, multiplier, baseNumber;
+
+  if (num === 25) {
+    // Outer Bull
+    value = 25;
+    multiplier = 1;
+    baseNumber = 25;
+  } else if (num === 50) {
+    // Bulls Eye (Double Bull)
+    value = 50;
+    multiplier = 2;
+    baseNumber = 25;
+  } else {
+    // Regular numbers with selected multiplier
+    value = num * selectedMultiplier.value;
+    multiplier = selectedMultiplier.value;
+    baseNumber = num;
+  }
+
+  socket.emit('game:add_throw', { value, multiplier, baseNumber });
+
+  // Reset multiplier to Single after throw
+  selectedMultiplier.value = 1;
 }
 
 function showMessage(text, type = 'info') {
@@ -1045,5 +1147,6 @@ socket.on('error', (msg) => {
 
 onUnmounted(() => {
   socket.disconnect();
+  window.removeEventListener('resize', updateWindowWidth);
 });
 </script>

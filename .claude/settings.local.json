@@ -15,7 +15,8 @@
       "Bash(docker cp:*)",
       "Bash(docker restart:*)",
       "Bash(tree:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }
