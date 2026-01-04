@@ -251,6 +251,8 @@
                 stroke-width="1"
                 @click="handleRingClick(num, 2)"
                 :class="['dartboard-segment', { disabled: !isCurrentPlayer }]"
+                :data-number="num"
+                :data-multiplier="2"
               />
 
               <!-- Single Outer -->
@@ -261,6 +263,8 @@
                 stroke-width="0.5"
                 @click="handleRingClick(num, 1)"
                 :class="['dartboard-segment', { disabled: !isCurrentPlayer }]"
+                :data-number="num"
+                :data-multiplier="1"
               />
 
               <!-- Triple Ring -->
@@ -271,6 +275,8 @@
                 stroke-width="1"
                 @click="handleRingClick(num, 3)"
                 :class="['dartboard-segment', { disabled: !isCurrentPlayer }]"
+                :data-number="num"
+                :data-multiplier="3"
               />
 
               <!-- Single Inner -->
@@ -281,6 +287,8 @@
                 stroke-width="0.5"
                 @click="handleRingClick(num, 1)"
                 :class="['dartboard-segment', { disabled: !isCurrentPlayer }]"
+                :data-number="num"
+                :data-multiplier="1"
               />
 
               <!-- Number labels -->
@@ -305,6 +313,8 @@
               stroke-width="2"
               @click="handleBullClick(25)"
               :class="['dartboard-segment', { disabled: !isCurrentPlayer }]"
+              data-number="25"
+              data-multiplier="1"
             />
 
             <!-- Bull (50) -->
@@ -317,6 +327,8 @@
               stroke-width="2"
               @click="handleBullClick(50)"
               :class="['dartboard-segment', { disabled: !isCurrentPlayer }]"
+              data-number="25"
+              data-multiplier="2"
             />
           </svg>
         </div>
@@ -590,6 +602,17 @@ watch(currentView, (newView) => {
   }
 });
 
+// Watch for new throws and trigger animation
+watch(() => party.value?.currentShots, (newShots, oldShots) => {
+  if (!newShots || !oldShots) return;
+
+  // Check if a new shot was added
+  if (newShots.length > oldShots.length) {
+    const latestShot = newShots[newShots.length - 1];
+    triggerHitAnimation(latestShot);
+  }
+}, { deep: true });
+
 // Update countdown timer every second
 setInterval(() => {
   if (leaderboardResetDate.value) {
@@ -796,6 +819,37 @@ function showDartboardMessage(text, type = 'error') {
 
 function triggerFileInput() {
   fileInput.value.click();
+}
+
+function triggerHitAnimation(shot) {
+  // Skip animation for misses
+  if (shot.value === 0) return;
+
+  // Flash the entire dartboard
+  const dartboardCircle = document.querySelector('.dartboard-circle');
+  if (dartboardCircle) {
+    dartboardCircle.classList.add('flash');
+    setTimeout(() => {
+      dartboardCircle.classList.remove('flash');
+    }, 500);
+  }
+
+  // Find the segment(s) that match this throw
+  const segments = document.querySelectorAll('.dartboard-segment');
+  const targetSegments = Array.from(segments).filter(seg => {
+    const segNumber = parseInt(seg.getAttribute('data-number'));
+    const segMultiplier = parseInt(seg.getAttribute('data-multiplier'));
+
+    return segNumber === shot.baseNumber && segMultiplier === shot.multiplier;
+  });
+
+  // Trigger animation on matching segments
+  targetSegments.forEach(segment => {
+    segment.classList.add('hit-flash');
+    setTimeout(() => {
+      segment.classList.remove('hit-flash');
+    }, 700);
+  });
 }
 
 async function resizeImage(file, maxWidth = 800, maxHeight = 800) {

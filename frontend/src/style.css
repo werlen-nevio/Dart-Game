@@ -498,12 +498,58 @@ h3 {
   justify-content: center;
   margin-bottom: 12px;
   position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .dartboard-svg-circle {
   max-width: 380px;
   width: 100%;
   height: auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Board flash animation - for the entire dartboard */
+@keyframes boardFlash {
+  0% {
+    filter: brightness(1);
+  }
+  20% {
+    filter: brightness(1.4);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+.dartboard-circle.flash {
+  animation: boardFlash 0.5s ease-out;
+}
+
+/* Hit animation - visible for all players */
+@keyframes dartHit {
+  0% {
+    filter: brightness(1);
+    stroke: currentColor;
+    stroke-width: 1;
+  }
+  15% {
+    filter: brightness(2.5);
+    stroke: #ffffff;
+    stroke-width: 5;
+  }
+  50% {
+    filter: brightness(2);
+    stroke: #ffff00;
+    stroke-width: 4;
+  }
+  100% {
+    filter: brightness(1);
+    stroke: currentColor;
+    stroke-width: 1;
+  }
 }
 
 .dartboard-segment {
@@ -524,6 +570,11 @@ h3 {
 .dartboard-segment.disabled {
   cursor: not-allowed;
   opacity: 0.4;
+}
+
+/* Hit animation class */
+.dartboard-segment.hit-flash {
+  animation: dartHit 0.7s ease-out;
 }
 
 .segment-label {

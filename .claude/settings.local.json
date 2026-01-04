@@ -13,7 +13,9 @@
       "Bash(curl:*)",
       "Bash(docker compose:*)",
       "Bash(docker cp:*)",
-      "Bash(docker restart:*)"
+      "Bash(docker restart:*)",
+      "Bash(tree:*)",
+      "Bash(wc:*)"
     ]
   }
 }
