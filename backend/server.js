@@ -575,6 +575,11 @@ io.on('connection', (socket) => {
     const party = parties.get(code);
     if (!party) return socket.emit('error', 'Party not found');
 
+    // Check if game is finished
+    if (party.gameState === 'finished') {
+      return socket.emit('error', 'Spiel ist beendet! Du kannst nicht mehr beitreten.');
+    }
+
     // Check if already in party (allow rejoin even if game is active)
     const existing = party.players.find(p => p.username === user.username);
 
@@ -768,6 +773,9 @@ io.on('connection', (socket) => {
             }
           }
 
+          // Set game state to finished
+          party.gameState = 'finished';
+
           io.to(user.partyCode).emit('game:winner', currentPlayer.username);
           broadcastPartyState(user.partyCode);
           return;
@@ -798,6 +806,9 @@ io.on('connection', (socket) => {
             updateEloRatings(currentPlayer.username, loser.username);
           }
         }
+
+        // Set game state to finished
+        party.gameState = 'finished';
 
         io.to(user.partyCode).emit('game:winner', currentPlayer.username);
         broadcastPartyState(user.partyCode);
@@ -985,6 +996,9 @@ io.on('connection', (socket) => {
               // Update ELO ratings
               updateEloRatings(remainingPlayer.username, disconnectedPlayer.username);
 
+              // Set game state to finished
+              party.gameState = 'finished';
+
               // Emit winner event
               io.to(user.partyCode).emit('game:winner', remainingPlayer.username);
               io.to(user.partyCode).emit('error', `${disconnectedPlayer.username} hat das Spiel verlassen. ${remainingPlayer.username} gewinnt!`);
@@ -996,7 +1010,8 @@ io.on('connection', (socket) => {
             // Apply ELO penalty
             applyEloPenalty(disconnectedPlayer.username, 50);
 
-            // Notify remaining players
+            // Notify remaining players that player was removed
+            io.to(user.partyCode).emit('player:removed', { username: disconnectedPlayer.username });
             io.to(user.partyCode).emit('error', `${disconnectedPlayer.username} hat das Spiel verlassen und verliert 50 ELO.`);
           }
         }
@@ -1007,7 +1022,28 @@ io.on('connection', (socket) => {
             party.spectators = party.spectators.filter(s => s.socketId !== socket.id);
           }
         } else {
+          // Find the index of the disconnected player before removing
+          const disconnectedPlayerIndex = party.players.findIndex(p => p.socketId === socket.id);
+          const wasCurrentPlayer = disconnectedPlayerIndex === party.currentPlayerIndex;
+
           party.players = party.players.filter(p => p.socketId !== socket.id);
+
+          // Adjust current player index after removal
+          if (party.players.length > 0) {
+            // If the disconnected player was the current player, clear shots and keep index
+            if (wasCurrentPlayer) {
+              party.currentShots = [];
+            }
+            // If the disconnected player was before the current player, decrease index
+            else if (disconnectedPlayerIndex < party.currentPlayerIndex) {
+              party.currentPlayerIndex--;
+            }
+
+            // If current index is now out of bounds, wrap to 0
+            if (party.currentPlayerIndex >= party.players.length) {
+              party.currentPlayerIndex = 0;
+            }
+          }
         }
 
         // If no players left, delete party
@@ -1015,10 +1051,6 @@ io.on('connection', (socket) => {
           parties.delete(user.partyCode);
           console.log(`Party ${user.partyCode} deleted (all disconnected)`);
         } else {
-          // Adjust current player index if needed
-          if (party.currentPlayerIndex >= party.players.length) {
-            party.currentPlayerIndex = 0;
-          }
           broadcastPartyState(user.partyCode);
         }
 

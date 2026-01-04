@@ -265,7 +265,8 @@
           <div class="countdown-display">
             <i class="fas fa-clock"></i>
             <span class="countdown-number">{{ reconnectCountdown }}</span>
-            <span>Sekunden bis zum Sieg</span>
+            <span v-if="party && party.players.length === 2">Sekunden bis zum Sieg</span>
+            <span v-else>Sekunden bis zur Entfernung</span>
           </div>
         </div>
       </div>
@@ -1260,6 +1261,14 @@ socket.on('player:disconnect_countdown', (data) => {
 socket.on('player:reconnected', () => {
   disconnectedPlayer.value = null;
   reconnectCountdown.value = 0;
+});
+
+socket.on('player:removed', (data) => {
+  // Clear disconnect modal if the removed player was the disconnected one
+  if (disconnectedPlayer.value === data.username) {
+    disconnectedPlayer.value = null;
+    reconnectCountdown.value = 0;
+  }
 });
 
 onUnmounted(() => {
