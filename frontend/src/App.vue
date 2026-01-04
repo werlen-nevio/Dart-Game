@@ -293,6 +293,12 @@
         </div>
       </div>
 
+      <!-- Checkout Suggestion -->
+      <div v-if="checkoutSuggestion && party.outMode === 'double'" class="checkout-suggestion">
+        <div class="checkout-label">Checkout für {{ currentPlayer.score }}:</div>
+        <div class="checkout-path">{{ checkoutSuggestion }}</div>
+      </div>
+
       <!-- Dartboard -->
       <div class="card">
         <!-- Dartboard Overlay Messages -->
@@ -667,6 +673,7 @@
 <script setup>
 import { ref, computed, onUnmounted, onMounted, watch } from 'vue';
 import { io } from 'socket.io-client';
+import { getCheckoutDisplay, hasCheckout } from './checkouts.js';
 
 const socket = io({
   withCredentials: true
@@ -794,6 +801,20 @@ const myActiveGames = computed(() => {
   return activeParties.value.filter(party =>
     party.players.some(p => p.username === user.value) && party.gameState === 'active'
   );
+});
+
+const checkoutSuggestion = computed(() => {
+  if (!party.value || !currentPlayer.value) return null;
+
+  const score = currentPlayer.value.score;
+
+  // Show checkout suggestions for double out mode (most common use case)
+  // For single out, checkouts are simpler, so we only show for double out
+  if (party.value.outMode === 'double' && score >= 2 && score <= 170) {
+    return getCheckoutDisplay(score);
+  }
+
+  return null;
 });
 
 // Methods
