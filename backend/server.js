@@ -314,6 +314,7 @@ const io = new Server(httpServer, {
 const parties = new Map(); // partyCode -> Party
 const socketUsers = new Map();   // socketId -> { username, partyCode, userId }
 const disconnectTimers = new Map(); // socketId -> timeout
+const disconnectCountdowns = new Map(); // socketId -> interval
 
 // Helper: Generate Party Code
 function generatePartyCode() {
@@ -546,14 +547,16 @@ io.on('connection', (socket) => {
     const party = parties.get(code);
     if (!party) return socket.emit('error', 'Party not found');
 
-    // Check if game is already active
-    if (party.gameState === 'active') {
-      return socket.emit('error', 'Spiel läuft bereits! Du kannst nur als Zuschauer beitreten.');
-    }
-
-    // Check if already in party
+    // Check if already in party (allow rejoin even if game is active)
     const existing = party.players.find(p => p.username === user.username);
+
     if (!existing) {
+      // Not in party - check if game is already active
+      if (party.gameState === 'active') {
+        return socket.emit('error', 'Spiel läuft bereits! Du kannst nur als Zuschauer beitreten.');
+      }
+
+      // Add new player
       const startScore = party.mode === '301' ? 301 : 501;
       party.players.push({
         username: user.username,
@@ -563,16 +566,28 @@ io.on('connection', (socket) => {
         selectedBadgeObj: user.selectedBadgeObj
       });
     } else {
-      // Reconnect: update socketId, profile picture, and badge
+      // Reconnect: Find and cancel disconnect timer from old socket
+      const oldSocketId = existing.socketId;
+
+      // Cancel disconnect timer if exists
+      if (disconnectTimers.has(oldSocketId)) {
+        clearTimeout(disconnectTimers.get(oldSocketId));
+        disconnectTimers.delete(oldSocketId);
+      }
+
+      // Cancel countdown interval if exists
+      if (disconnectCountdowns.has(oldSocketId)) {
+        clearInterval(disconnectCountdowns.get(oldSocketId));
+        disconnectCountdowns.delete(oldSocketId);
+      }
+
+      // Update player info
       existing.socketId = socket.id;
       existing.profilePicture = user.profilePicture;
       existing.selectedBadgeObj = user.selectedBadgeObj;
 
-      // Cancel disconnect timer if exists
-      if (disconnectTimers.has(socket.id)) {
-        clearTimeout(disconnectTimers.get(socket.id));
-        disconnectTimers.delete(socket.id);
-      }
+      // Notify other players that the player reconnected
+      io.to(code).emit('player:reconnected', { username: user.username });
     }
 
     user.partyCode = code;

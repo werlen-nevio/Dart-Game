@@ -2055,6 +2055,82 @@ button:disabled:hover {
   border-color: #e0e0e0;
 }
 
+.rejoin-btn {
+  flex: 1;
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: #ffffff;
+  border: 1px solid #4caf50;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+}
+
+.rejoin-btn i {
+  margin-right: 6px;
+}
+
+.rejoin-btn:hover {
+  background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+  border-color: #45a049;
+  box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+  transform: translateY(-1px);
+}
+
+.my-active-games {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.my-active-game-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #1a1d1f;
+  border: 1px solid #2a2d2f;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.my-active-game-card:hover {
+  background: #2a2d2f;
+  border-color: #3a3d3f;
+}
+
+.game-info {
+  flex: 1;
+}
+
+.rejoin-btn-compact {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: #ffffff;
+  border: 1px solid #4caf50;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+  white-space: nowrap;
+}
+
+.rejoin-btn-compact i {
+  margin-right: 6px;
+}
+
+.rejoin-btn-compact:hover {
+  background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+  border-color: #45a049;
+  box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+  transform: scale(1.05);
+}
+
 .spectator-badge {
   display: inline-block;
   margin-left: 12px;

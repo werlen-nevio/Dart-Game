@@ -27,6 +27,31 @@
           </button>
         </div>
 
+        <!-- Active Games Section -->
+        <div v-if="myActiveGames.length > 0" style="margin-bottom: 24px;">
+          <h3 style="margin: 0 0 16px 0; color: #e0e0e0; font-size: 1.1rem;">Laufende Spiele</h3>
+          <div class="my-active-games">
+            <div
+              v-for="game in myActiveGames"
+              :key="game.code"
+              class="my-active-game-card"
+            >
+              <div class="game-info">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                  <h4 style="margin: 0; font-size: 1rem;">{{ game.name }}</h4>
+                  <span class="game-state-badge active">Aktiv</span>
+                </div>
+                <div style="font-size: 0.85rem; color: #8a8d8f;">
+                  {{ game.mode }} • {{ game.outMode === 'double' ? 'Double Out' : 'Single Out' }}
+                </div>
+              </div>
+              <button @click="joinPartyByCode(game.code)" class="rejoin-btn-compact">
+                <i class="fas fa-redo"></i> Zurückkehren
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="menu-buttons">
           <button @click="currentView = 'playMenu'" class="menu-btn">Spiel spielen</button>
           <button @click="currentView = 'leaderboard'" class="menu-btn">Leaderboard</button>
@@ -186,8 +211,16 @@
               </div>
             </div>
             <div class="party-actions">
+              <!-- Check if user is in this party -->
               <button
-                v-if="party.gameState === 'active'"
+                v-if="party.players.some(p => p.username === user)"
+                @click.stop="joinPartyByCode(party.code)"
+                class="rejoin-btn"
+              >
+                <i class="fas fa-redo"></i> Zurückkehren
+              </button>
+              <button
+                v-else-if="party.gameState === 'active'"
                 @click.stop="spectateParty(party.code)"
                 class="spectate-btn"
               >
@@ -672,6 +705,8 @@ onMounted(async () => {
       selectedBadgeObj.value = userData.selectedBadgeObj;
       // Also log in via socket
       socket.emit('user:login', userData.username);
+      // Load active parties to show user's active games
+      refreshActiveParties();
     }
   } catch (error) {
     // User not authenticated, show login screen
@@ -687,7 +722,7 @@ const mobileNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
 
 // Watch for view changes to refresh active parties and leaderboard
 watch(currentView, (newView) => {
-  if (newView === 'joinParty') {
+  if (newView === 'joinParty' || newView === 'home') {
     refreshActiveParties();
   } else if (newView === 'leaderboard') {
     loadLeaderboard();
@@ -733,6 +768,13 @@ const isSpectator = computed(() => {
 
 const isMobile = computed(() => {
   return windowWidth.value <= 768;
+});
+
+const myActiveGames = computed(() => {
+  if (!user.value || !activeParties.value) return [];
+  return activeParties.value.filter(party =>
+    party.players.some(p => p.username === user.value) && party.gameState === 'active'
+  );
 });
 
 // Methods
@@ -1153,6 +1195,8 @@ socket.on('party:created', (data) => {
 
 socket.on('party:joined', (data) => {
   party.value = data;
+  // Switch to party view when joining/rejoining
+  currentView.value = 'party';
 });
 
 socket.on('party:spectating', (data) => {
