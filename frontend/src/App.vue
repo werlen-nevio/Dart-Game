@@ -686,6 +686,12 @@
         <p style="font-size: 1.8rem; margin: 24px 0; color: #ffd700; font-weight: 700;">
           {{ winner }}
         </p>
+        <div v-if="currentUserEloChange !== null" class="elo-change-display">
+          <div class="elo-change-label">Deine ELO-Änderung:</div>
+          <div :class="['elo-change-value', currentUserEloChange >= 0 ? 'positive' : 'negative']">
+            {{ currentUserEloChange >= 0 ? '+' : '' }}{{ currentUserEloChange }}
+          </div>
+        </div>
         <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 32px;">
           <button @click="restartGame" class="success" style="width: 100%;">Nochmal spielen</button>
           <button @click="winner = null; leaveParty()" class="secondary" style="width: 100%;">Zurück zum Menü</button>
@@ -800,6 +806,7 @@ const selectedMultiplier = ref(1); // For mobile number input
 const windowWidth = ref(window.innerWidth);
 const disconnectedPlayer = ref(null);
 const reconnectCountdown = ref(0);
+const winnerEloChange = ref(null);
 
 // Update window width on resize
 const updateWindowWidth = () => {
@@ -917,6 +924,20 @@ const checkoutSuggestion = computed(() => {
     return getCheckoutDisplay(remaining);
   }
 
+  return null;
+});
+
+const currentUserEloChange = computed(() => {
+  if (!winnerEloChange.value || !user.value) return null;
+
+  // Check if current user is the winner
+  if (winnerEloChange.value.winner === user.value) {
+    return winnerEloChange.value.winnerChange;
+  }
+  // Check if current user is the loser
+  if (winnerEloChange.value.loser === user.value) {
+    return winnerEloChange.value.loserChange;
+  }
   return null;
 });
 
@@ -1404,8 +1425,15 @@ socket.on('game:double_required', (msg) => {
   showDartboardMessage(msg, 'double-required');
 });
 
-socket.on('game:winner', (username) => {
-  winner.value = username;
+socket.on('game:winner', (data) => {
+  // Handle both old format (just username string) and new format (object with username and eloChanges)
+  if (typeof data === 'string') {
+    winner.value = data;
+    winnerEloChange.value = null;
+  } else {
+    winner.value = data.username;
+    winnerEloChange.value = data.eloChanges;
+  }
   // Clear disconnect countdown when game ends
   disconnectedPlayer.value = null;
   reconnectCountdown.value = 0;

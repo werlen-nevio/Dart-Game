@@ -18,7 +18,8 @@
       "Bash(wc:*)",
       "Bash(npm run build:*)",
       "Bash(docker ps:*)",
-      "Bash(docker-compose restart:*)"
+      "Bash(docker-compose restart:*)",
+      "Bash(cat:*)"
     ]
   }
 }

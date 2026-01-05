@@ -402,7 +402,7 @@ async function updateEloRatings(winnerUsername, loserUsername) {
 
     if (!winner || !loser) {
       console.log('Could not find users for ELO update');
-      return;
+      return null;
     }
 
     // Calculate ELO changes
@@ -436,8 +436,18 @@ async function updateEloRatings(winnerUsername, loserUsername) {
 
     console.log(`ELO Update - ${winnerUsername}: ${winner.elo - winnerChange} → ${winner.elo} (+${winnerChange})`);
     console.log(`ELO Update - ${loserUsername}: ${loser.elo - loserChange} → ${loser.elo} (${loserChange})`);
+
+    return {
+      winner: winnerUsername,
+      loser: loserUsername,
+      winnerChange,
+      loserChange,
+      winnerNewElo: winner.elo,
+      loserNewElo: loser.elo
+    };
   } catch (error) {
     console.error('Error updating ELO:', error);
+    return null;
   }
 }
 
@@ -805,7 +815,7 @@ io.on('connection', (socket) => {
   });
 
   // Add to Current Throw
-  socket.on('game:add_throw', (shotData) => {
+  socket.on('game:add_throw', async (shotData) => {
     const user = socketUsers.get(socket.id);
     if (!user || !user.partyCode) return;
 
@@ -890,17 +900,21 @@ io.on('connection', (socket) => {
           party.currentShots = [];
 
           // Update ELO for 1v1 games
+          let eloChanges = null;
           if (party.players.length === 2) {
             const loser = party.players.find(p => p.username !== currentPlayer.username);
             if (loser) {
-              updateEloRatings(currentPlayer.username, loser.username);
+              eloChanges = await updateEloRatings(currentPlayer.username, loser.username);
             }
           }
 
           // Set game state to finished
           party.gameState = 'finished';
 
-          io.to(user.partyCode).emit('game:winner', currentPlayer.username);
+          io.to(user.partyCode).emit('game:winner', {
+            username: currentPlayer.username,
+            eloChanges
+          });
           broadcastPartyState(user.partyCode);
           return;
         } else {
@@ -924,17 +938,21 @@ io.on('connection', (socket) => {
         party.currentShots = [];
 
         // Update ELO for 1v1 games
+        let eloChanges = null;
         if (party.players.length === 2) {
           const loser = party.players.find(p => p.username !== currentPlayer.username);
           if (loser) {
-            updateEloRatings(currentPlayer.username, loser.username);
+            eloChanges = await updateEloRatings(currentPlayer.username, loser.username);
           }
         }
 
         // Set game state to finished
         party.gameState = 'finished';
 
-        io.to(user.partyCode).emit('game:winner', currentPlayer.username);
+        io.to(user.partyCode).emit('game:winner', {
+          username: currentPlayer.username,
+          eloChanges
+        });
         broadcastPartyState(user.partyCode);
         return;
       }
@@ -1092,7 +1110,7 @@ io.on('connection', (socket) => {
       disconnectCountdowns.set(socket.id, countdownInterval);
 
       // Set a 30-second timer before removing from party
-      const timer = setTimeout(() => {
+      const timer = setTimeout(async () => {
         if (disconnectCountdowns.has(socket.id)) {
           clearInterval(disconnectCountdowns.get(socket.id));
           disconnectCountdowns.delete(socket.id);
@@ -1118,13 +1136,16 @@ io.on('connection', (socket) => {
               console.log(`Player ${user.username} did not rejoin. Awarding win to ${remainingPlayer.username}`);
 
               // Update ELO ratings
-              updateEloRatings(remainingPlayer.username, disconnectedPlayer.username);
+              const eloChanges = await updateEloRatings(remainingPlayer.username, disconnectedPlayer.username);
 
               // Set game state to finished
               party.gameState = 'finished';
 
               // Emit winner event
-              io.to(user.partyCode).emit('game:winner', remainingPlayer.username);
+              io.to(user.partyCode).emit('game:winner', {
+                username: remainingPlayer.username,
+                eloChanges
+              });
               io.to(user.partyCode).emit('error', `${disconnectedPlayer.username} hat das Spiel verlassen. ${remainingPlayer.username} gewinnt!`);
             }
           } else {

@@ -415,6 +415,33 @@ h3 {
   animation: bounce 1s infinite;
 }
 
+.elo-change-display {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.elo-change-label {
+  font-size: 0.95rem;
+  color: #b0b0b0;
+  margin-bottom: 8px;
+}
+
+.elo-change-value {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.elo-change-value.positive {
+  color: #4caf50;
+}
+
+.elo-change-value.negative {
+  color: #f44336;
+}
+
 @media (max-width: 480px) {
   .winner-modal {
     max-width: 95%;
@@ -422,6 +449,10 @@ h3 {
 
   .winner-icon {
     font-size: 4rem;
+  }
+
+  .elo-change-value {
+    font-size: 1.6rem;
   }
 }
 
