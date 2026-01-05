@@ -385,7 +385,7 @@
 
       <!-- Checkout Suggestion -->
       <div v-if="checkoutSuggestion && party.outMode === 'double'" class="checkout-suggestion">
-        <div class="checkout-label">Checkout für {{ currentPlayer.score }}:</div>
+        <div class="checkout-label">Checkout für {{ remainingScore }}:</div>
         <div class="checkout-path">{{ checkoutSuggestion }}</div>
       </div>
 
@@ -895,15 +895,26 @@ const myActiveGames = computed(() => {
   );
 });
 
+const remainingScore = computed(() => {
+  if (!party.value || !currentPlayer.value) return 0;
+
+  let remaining = currentPlayer.value.score;
+  if (party.value.currentShots && party.value.currentShots.length > 0) {
+    const shotsTotal = party.value.currentShots.reduce((sum, shot) => sum + shot.value, 0);
+    remaining = currentPlayer.value.score - shotsTotal;
+  }
+  return remaining;
+});
+
 const checkoutSuggestion = computed(() => {
   if (!party.value || !currentPlayer.value) return null;
 
-  const score = currentPlayer.value.score;
+  const remaining = remainingScore.value;
 
   // Show checkout suggestions for double out mode (most common use case)
   // For single out, checkouts are simpler, so we only show for double out
-  if (party.value.outMode === 'double' && score >= 2 && score <= 170) {
-    return getCheckoutDisplay(score);
+  if (party.value.outMode === 'double' && remaining >= 2 && remaining <= 170) {
+    return getCheckoutDisplay(remaining);
   }
 
   return null;
