@@ -1,0 +1,48 @@
+{
+  "badges": [
+    {
+      "id": "win-streak-10",
+      "name": "Siegesserie",
+      "description": "Gewinne 10 Spiele in Folge",
+      "icon": "fa-solid fa-fire",
+      "rarity": "uncommon",
+      "requirement": {
+        "type": "win_streak",
+        "value": 10
+      }
+    },
+    {
+      "id": "perfect-game",
+      "name": "Perfektes Spiel",
+      "description": "Gewinne ein Spiel mit 9 Darts",
+      "icon": "fa-solid fa-bullseye",
+      "rarity": "legendary",
+      "requirement": {
+        "type": "perfect_game",
+        "value": 1
+      }
+    },
+    {
+      "id": "triple-180",
+      "name": "180 Club",
+      "description": "Wirf einen 180er",
+      "icon": "fa-solid fa-bolt",
+      "rarity": "uncommon",
+      "requirement": {
+        "type": "max_score",
+        "value": 180
+      }
+    },
+    {
+      "id": "first-place",
+      "name": "Platz 1",
+      "description": "Erreiche Platz 1 im wöchentlichen Leaderboard",
+      "icon": "fa-solid fa-ranking-star",
+      "rarity": "legendary",
+      "requirement": {
+        "type": "leaderboard_rank",
+        "value": 1
+      }
+    }
+  ]
+}

@@ -13,6 +13,7 @@ import { connectDB } from './config/database.js';
 import { setupPassport } from './config/passport.js';
 import User from './models/User.js';
 import LeaderboardHistory from './models/LeaderboardHistory.js';
+import { getAllBadges, checkAndAwardBadges, checkLeaderboardBadges } from './utils/badgeSystem.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -252,6 +253,16 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
+// Get all available badges
+app.get('/api/badges', (req, res) => {
+  try {
+    const badges = getAllBadges();
+    res.json({ badges });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get player profile
 app.get('/api/player/:username', async (req, res) => {
   try {
@@ -395,7 +406,7 @@ function broadcastPartyState(partyCode) {
 }
 
 // Helper: Update ELO for winner and loser
-async function updateEloRatings(winnerUsername, loserUsername) {
+async function updateEloRatings(winnerUsername, loserUsername, gameStats = {}) {
   try {
     const winner = await User.findOne({ username: winnerUsername });
     const loser = await User.findOne({ username: loserUsername });
@@ -437,13 +448,20 @@ async function updateEloRatings(winnerUsername, loserUsername) {
     console.log(`ELO Update - ${winnerUsername}: ${winner.elo - winnerChange} → ${winner.elo} (+${winnerChange})`);
     console.log(`ELO Update - ${loserUsername}: ${loser.elo - loserChange} → ${loser.elo} (${loserChange})`);
 
+    // Check and award badges to the winner
+    const newBadges = await checkAndAwardBadges(winnerUsername, gameStats);
+    if (newBadges.length > 0) {
+      console.log(`Awarded ${newBadges.length} new badge(s) to ${winnerUsername}:`, newBadges.map(b => b.name).join(', '));
+    }
+
     return {
       winner: winnerUsername,
       loser: loserUsername,
       winnerChange,
       loserChange,
       winnerNewElo: winner.elo,
-      loserNewElo: loser.elo
+      loserNewElo: loser.elo,
+      newBadges
     };
   } catch (error) {
     console.error('Error updating ELO:', error);
@@ -573,6 +591,14 @@ async function checkWeeklyReset() {
     }
   } catch (error) {
     console.error('Error saving leaderboard history:', error);
+  }
+
+  // Check and award leaderboard badges before reset
+  try {
+    await checkLeaderboardBadges();
+    console.log('Leaderboard badges checked and awarded');
+  } catch (error) {
+    console.error('Error checking leaderboard badges:', error);
   }
 
   // Now perform the reset

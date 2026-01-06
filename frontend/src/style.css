@@ -2386,3 +2386,181 @@ button:disabled:hover {
     font-size: 1rem;
   }
 }
+
+/* All Badges Display */
+.all-badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.badge-display-card {
+  background: #1a1d1f;
+  border: 2px solid #2a2d2f;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.badge-display-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #2a2d2f;
+  transition: all 0.3s ease;
+}
+
+.badge-display-card.earned {
+  background: rgba(76, 175, 80, 0.05);
+  border-color: rgba(76, 175, 80, 0.3);
+}
+
+.badge-display-card.earned::before {
+  background: #4caf50;
+}
+
+.badge-display-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.badge-display-header {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.badge-display-icon {
+  font-size: 3.5rem;
+  color: #64b5f6;
+  transition: all 0.3s ease;
+}
+
+.badge-display-card.earned .badge-display-icon {
+  color: #4caf50;
+}
+
+.badge-display-card.common .badge-display-icon {
+  color: #9e9e9e;
+}
+
+.badge-display-card.uncommon .badge-display-icon {
+  color: #4caf50;
+}
+
+.badge-display-card.rare .badge-display-icon {
+  color: #2196f3;
+}
+
+.badge-display-card.epic .badge-display-icon {
+  color: #9c27b0;
+}
+
+.badge-display-card.legendary .badge-display-icon {
+  color: #ffc107;
+}
+
+.badge-display-card:hover .badge-display-icon {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.earned-checkmark {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #4caf50;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+}
+
+.earned-checkmark i {
+  color: white;
+  font-size: 1rem;
+}
+
+.badge-display-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin: 0 0 8px 0;
+}
+
+.badge-display-description {
+  font-size: 0.9rem;
+  color: #8a8d8f;
+  margin: 0 0 16px 0;
+  line-height: 1.4;
+  min-height: 40px;
+}
+
+.badge-rarity-tag {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-rarity-tag.common {
+  background: rgba(158, 158, 158, 0.2);
+  color: #9e9e9e;
+}
+
+.badge-rarity-tag.uncommon {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+}
+
+.badge-rarity-tag.rare {
+  background: rgba(33, 150, 243, 0.2);
+  color: #2196f3;
+}
+
+.badge-rarity-tag.epic {
+  background: rgba(156, 39, 176, 0.2);
+  color: #9c27b0;
+}
+
+.badge-rarity-tag.legendary {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+}
+
+@media (max-width: 768px) {
+  .all-badges-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+
+  .badge-display-card {
+    padding: 20px 16px;
+  }
+
+  .badge-display-icon {
+    font-size: 2.8rem;
+  }
+
+  .badge-display-name {
+    font-size: 1rem;
+  }
+
+  .badge-display-description {
+    font-size: 0.85rem;
+    min-height: 36px;
+  }
+}

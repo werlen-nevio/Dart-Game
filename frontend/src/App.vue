@@ -19,7 +19,7 @@
             <div v-if="profilePicture" class="profile-pic-small" :style="{ backgroundImage: `url(${profilePicture})` }"></div>
             <div style="display: flex; align-items: center; gap: 8px;">
               <h2 style="margin: 0;">Willkommen, {{ user }}!</h2>
-              <span v-if="selectedBadgeObj" class="user-badge" :title="selectedBadgeObj.name">{{ selectedBadgeObj.icon }}</span>
+              <i v-if="selectedBadgeObj" :class="selectedBadgeObj.icon" class="user-badge" :title="selectedBadgeObj.name"></i>
             </div>
           </div>
           <button @click="showProfileSettings = true" class="settings-btn" title="Profile Settings">
@@ -55,6 +55,7 @@
         <div class="menu-buttons">
           <button @click="currentView = 'playMenu'" class="menu-btn">Spiel spielen</button>
           <button @click="currentView = 'leaderboard'" class="menu-btn">Leaderboard</button>
+          <button @click="currentView = 'badges'; loadAllBadges()" class="menu-btn">Alle Badges</button>
         </div>
       </div>
     </div>
@@ -72,6 +73,47 @@
           <button @click="currentView = 'lobby'" class="menu-btn">Standard</button>
           <button disabled class="menu-btn secondary">Coming soon</button>
           <button @click="currentView = 'joinParty'" class="menu-btn join-party">Party beitreten</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- All Badges Screen -->
+    <div v-else-if="currentView === 'badges'">
+      <div class="card">
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+          <button @click="currentView = 'home'" class="back-btn">← Zurück</button>
+          <h2 style="margin: 0; flex: 1; text-align: center;">Alle Badges</h2>
+          <button @click="loadAllBadges" class="settings-btn" title="Aktualisieren">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+        </div>
+
+        <p style="color: #8a8d8f; margin-bottom: 24px; text-align: center;">
+          Entdecke alle verfügbaren Badges und wie du sie verdienen kannst
+        </p>
+
+        <div v-if="allBadges.length === 0" style="text-align: center; color: #8a8d8f; padding: 40px 20px;">
+          <p style="font-size: 1.1rem;">Keine Badges verfügbar</p>
+        </div>
+
+        <div v-else class="all-badges-grid">
+          <div
+            v-for="badge in allBadges"
+            :key="badge.id"
+            :class="['badge-display-card', badge.rarity, { earned: userHasBadge(badge.id) }]"
+          >
+            <div class="badge-display-header">
+              <i :class="badge.icon" class="badge-display-icon"></i>
+              <div v-if="userHasBadge(badge.id)" class="earned-checkmark">
+                <i class="fas fa-check-circle"></i>
+              </div>
+            </div>
+            <h3 class="badge-display-name">{{ badge.name }}</h3>
+            <p class="badge-display-description">{{ badge.description }}</p>
+            <div :class="['badge-rarity-tag', badge.rarity]">
+              {{ getRarityLabel(badge.rarity) }}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -119,7 +161,7 @@
               <div v-if="entry.profilePicture" class="profile-pic-small" :style="{ backgroundImage: `url(${entry.profilePicture})` }"></div>
               <div style="display: flex; align-items: center; gap: 6px;">
                 <span class="player-username">{{ entry.username }}</span>
-                <span v-if="entry.selectedBadgeObj" class="user-badge" :title="entry.selectedBadgeObj.name">{{ entry.selectedBadgeObj.icon }}</span>
+                <i v-if="entry.selectedBadgeObj" :class="entry.selectedBadgeObj.icon" class="user-badge" :title="entry.selectedBadgeObj.name"></i>
               </div>
             </div>
             <div class="leaderboard-stats">
@@ -202,7 +244,7 @@
                 <div v-if="entry.profilePicture" class="profile-pic-small" :style="{ backgroundImage: `url(${entry.profilePicture})` }"></div>
                 <div style="display: flex; align-items: center; gap: 6px;">
                   <span class="player-username">{{ entry.username }}</span>
-                  <span v-if="entry.selectedBadgeObj" class="user-badge" :title="entry.selectedBadgeObj.name">{{ entry.selectedBadgeObj.icon }}</span>
+                  <i v-if="entry.selectedBadgeObj" :class="entry.selectedBadgeObj.icon" class="user-badge" :title="entry.selectedBadgeObj.name"></i>
                 </div>
               </div>
               <div class="leaderboard-stats">
@@ -296,7 +338,7 @@
                 <div v-if="player.profilePicture" class="profile-pic-tiny" :style="{ backgroundImage: `url(${player.profilePicture})` }"></div>
                 <div style="display: flex; align-items: center; gap: 4px;">
                   <span>{{ player.username }}</span>
-                  <span v-if="player.selectedBadgeObj" class="user-badge-small" :title="player.selectedBadgeObj.name">{{ player.selectedBadgeObj.icon }}</span>
+                  <i v-if="player.selectedBadgeObj" :class="player.selectedBadgeObj.icon" class="user-badge-small" :title="player.selectedBadgeObj.name"></i>
                 </div>
               </div>
             </div>
@@ -581,7 +623,7 @@
             <div v-if="player.profilePicture" class="profile-pic-small" :style="{ backgroundImage: `url(${player.profilePicture})` }"></div>
             <div style="display: flex; align-items: center; gap: 6px;">
               <div class="player-name" style="margin-bottom: 0; font-size: 1.1rem;">{{ player.username }}</div>
-              <span v-if="player.selectedBadgeObj" class="user-badge" :title="player.selectedBadgeObj.name">{{ player.selectedBadgeObj.icon }}</span>
+              <i v-if="player.selectedBadgeObj" :class="player.selectedBadgeObj.icon" class="user-badge" :title="player.selectedBadgeObj.name"></i>
             </div>
           </div>
           <div class="player-score">{{ player.score }}</div>
@@ -652,7 +694,7 @@
               :class="['badge-selector-item', { selected: selectedBadge === badge.id }]"
               :title="badge.description"
             >
-              <div class="badge-icon-large">{{ badge.icon }}</div>
+              <i :class="badge.icon" class="badge-icon-large"></i>
               <div class="badge-name-small">{{ badge.name }}</div>
             </div>
             <div
@@ -707,7 +749,7 @@
           <div v-else class="profile-pic-large" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
           <div style="display: flex; align-items: center; gap: 8px; justify-content: center; margin: 16px 0 8px 0;">
             <h2 style="margin: 0;">{{ selectedPlayer.username }}</h2>
-            <span v-if="selectedPlayer.selectedBadgeObj" class="user-badge-large" :title="selectedPlayer.selectedBadgeObj.name">{{ selectedPlayer.selectedBadgeObj.icon }}</span>
+            <i v-if="selectedPlayer.selectedBadgeObj" :class="selectedPlayer.selectedBadgeObj.icon" class="user-badge-large" :title="selectedPlayer.selectedBadgeObj.name"></i>
           </div>
           <p style="color: #8a8d8f; font-size: 0.9rem; margin: 0;">
             Mitglied seit {{ new Date(selectedPlayer.createdAt).toLocaleDateString('de-DE') }}
@@ -724,7 +766,7 @@
               class="badge-item"
               :title="badge.description"
             >
-              <div class="badge-icon">{{ badge.icon }}</div>
+              <i :class="badge.icon" class="badge-icon"></i>
               <div class="badge-name">{{ badge.name }}</div>
             </div>
           </div>
@@ -778,13 +820,14 @@ const socket = io({
 // State
 const user = ref(null);
 const party = ref(null);
-const currentView = ref('home'); // 'home', 'playMenu', 'lobby', 'game', 'leaderboard', 'leaderboardHistory'
+const currentView = ref('home'); // 'home', 'playMenu', 'lobby', 'game', 'leaderboard', 'leaderboardHistory', 'badges'
 const activeParties = ref([]);
 const leaderboard = ref([]);
 const leaderboardResetTime = ref('');
 const leaderboardResetDate = ref(null);
 const leaderboardHistories = ref([]);
 const selectedHistoricalLeaderboard = ref(null);
+const allBadges = ref([]);
 const createForm = ref({
   partyName: '',
   mode: '501',
@@ -1385,6 +1428,35 @@ async function updateSelectedBadge(badgeId) {
     showMessage('Fehler beim Aktualisieren des Badges', 'error');
     console.error(error);
   }
+}
+
+async function loadAllBadges() {
+  try {
+    const response = await fetch('/api/badges', {
+      credentials: 'include'
+    });
+    if (response.ok) {
+      const data = await response.json();
+      allBadges.value = data.badges;
+    }
+  } catch (error) {
+    console.error('Failed to load all badges:', error);
+  }
+}
+
+function userHasBadge(badgeId) {
+  return userBadges.value.some(b => b.id === badgeId);
+}
+
+function getRarityLabel(rarity) {
+  const labels = {
+    common: 'Häufig',
+    uncommon: 'Selten',
+    rare: 'Rar',
+    epic: 'Episch',
+    legendary: 'Legendär'
+  };
+  return labels[rarity] || rarity;
 }
 
 // Socket Listeners
