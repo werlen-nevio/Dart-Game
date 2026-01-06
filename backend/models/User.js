@@ -52,6 +52,27 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  // Player stats for badges
+  maxThrow: {
+    type: Number,
+    default: 0 // Highest single throw score (e.g., 180)
+  },
+  highestCheckout: {
+    type: Number,
+    default: 0 // Highest checkout score
+  },
+  perfectGames: {
+    type: Number,
+    default: 0 // Number of perfect games (9-dart finishes)
+  },
+  winStreak: {
+    type: Number,
+    default: 0 // Longest win streak
+  },
+  currentWinStreak: {
+    type: Number,
+    default: 0 // Current consecutive wins
+  },
   // Badge system
   badges: [{
     id: String,

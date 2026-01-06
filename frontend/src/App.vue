@@ -55,7 +55,7 @@
         <div class="menu-buttons">
           <button @click="currentView = 'playMenu'" class="menu-btn">Spiel spielen</button>
           <button @click="currentView = 'leaderboard'" class="menu-btn">Leaderboard</button>
-          <button @click="currentView = 'badges'; loadAllBadges()" class="menu-btn">Alle Badges</button>
+          <button @click="currentView = 'badges'; loadAllBadges()" class="menu-btn">Achievements</button>
         </div>
       </div>
     </div>
@@ -82,7 +82,7 @@
       <div class="card">
         <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
           <button @click="currentView = 'home'" class="back-btn">← Zurück</button>
-          <h2 style="margin: 0; flex: 1; text-align: center;">Alle Badges</h2>
+          <h2 style="margin: 0; flex: 1; text-align: center;">Achievements</h2>
           <button @click="loadAllBadges" class="settings-btn" title="Aktualisieren">
             <i class="fas fa-sync-alt"></i>
           </button>
@@ -1450,11 +1450,11 @@ function userHasBadge(badgeId) {
 
 function getRarityLabel(rarity) {
   const labels = {
-    common: 'Häufig',
-    uncommon: 'Selten',
-    rare: 'Rar',
-    epic: 'Episch',
-    legendary: 'Legendär'
+    common: 'Common',
+    uncommon: 'Uncommon',
+    rare: 'Rare',
+    epic: 'Epic',
+    legendary: 'Legendary'
   };
   return labels[rarity] || rarity;
 }

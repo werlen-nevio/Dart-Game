@@ -1,20 +1,142 @@
 {
   "badges": [
     {
+      "id": "first-win",
+      "name": "Erfolgserlebnis",
+      "description": "Gewinne dein erstes Spiel",
+      "icon": "fa-solid fa-trophy",
+      "rarity": "common",
+      "requirement": {
+        "type": "wins",
+        "value": 1
+      }
+    },
+    {
+      "id": "veteran",
+      "name": "Routinier",
+      "description": "Gewinne 10 Spiele",
+      "icon": "fa-solid fa-medal",
+      "rarity": "common",
+      "requirement": {
+        "type": "wins",
+        "value": 10
+      }
+    },
+    {
+      "id": "champion",
+      "name": "Seriensieger",
+      "description": "Gewinne 50 Spiele",
+      "icon": "fa-solid fa-star",
+      "rarity": "uncommon",
+      "requirement": {
+        "type": "wins",
+        "value": 50
+      }
+    },
+    {
+      "id": "legend",
+      "name": "Ausnahmespieler",
+      "description": "Gewinne 100 Spiele",
+      "icon": "fa-solid fa-crown",
+      "rarity": "rare",
+      "requirement": {
+        "type": "wins",
+        "value": 100
+      }
+    },
+    {
+      "id": "win-streak-5",
+      "name": "Hot Streak",
+      "description": "Gewinne 5 Spiele in Folge",
+      "icon": "fa-solid fa-fire-flame-simple",
+      "rarity": "rare",
+      "requirement": {
+        "type": "win_streak",
+        "value": 5
+      }
+    },
+    {
+      "id": "high-checkout-100",
+      "name": "High Checkout",
+      "description": "Checke mit 100+ aus",
+      "icon": "fa-solid fa-check-double",
+      "rarity": "rare",
+      "requirement": {
+        "type": "high_checkout",
+        "value": 100
+      }
+    },
+    {
+      "id": "win-rate-70",
+      "name": "Killer Instinct",
+      "description": "Erreiche 70% Siegrate (min. 20 Spiele)",
+      "icon": "fa-solid fa-percent",
+      "rarity": "rare",
+      "requirement": {
+        "type": "win_rate",
+        "value": 70,
+        "min_games": 20
+      }
+    },
+    {
       "id": "win-streak-10",
-      "name": "Siegesserie",
+      "name": "Dominanz",
       "description": "Gewinne 10 Spiele in Folge",
       "icon": "fa-solid fa-fire",
-      "rarity": "uncommon",
+      "rarity": "epic",
       "requirement": {
         "type": "win_streak",
         "value": 10
       }
     },
     {
+      "id": "triple-140",
+      "name": "140",
+      "description": "Wirf einen 140er",
+      "icon": "fa-solid fa-certificate",
+      "rarity": "epic",
+      "requirement": {
+        "type": "max_score",
+        "value": 140
+      }
+    },
+    {
+      "id": "high-checkout-150",
+      "name": "Elite Finish",
+      "description": "Checke mit 150+ aus",
+      "icon": "fa-solid fa-award",
+      "rarity": "epic",
+      "requirement": {
+        "type": "high_checkout",
+        "value": 150
+      }
+    },
+    {
+      "id": "elo-1200",
+      "name": "Expert",
+      "description": "Erreiche 1200 ELO",
+      "icon": "fa-solid fa-arrow-trend-up",
+      "rarity": "epic",
+      "requirement": {
+        "type": "elo",
+        "value": 1200
+      }
+    },
+    {
+      "id": "win-streak-20",
+      "name": "Godlike",
+      "description": "Gewinne 20 Spiele in Folge",
+      "icon": "fa-solid fa-fire-flame-curved",
+      "rarity": "legendary",
+      "requirement": {
+        "type": "win_streak",
+        "value": 20
+      }
+    },
+    {
       "id": "perfect-game",
-      "name": "Perfektes Spiel",
-      "description": "Gewinne ein Spiel mit 9 Darts",
+      "name": "9-Darter",
+      "description": "Gewinne ein Spiel mit 9 Darts (501)",
       "icon": "fa-solid fa-bullseye",
       "rarity": "legendary",
       "requirement": {
@@ -24,18 +146,40 @@
     },
     {
       "id": "triple-180",
-      "name": "180 Club",
+      "name": "180",
       "description": "Wirf einen 180er",
       "icon": "fa-solid fa-bolt",
-      "rarity": "uncommon",
+      "rarity": "legendary",
       "requirement": {
         "type": "max_score",
         "value": 180
       }
     },
     {
+      "id": "high-checkout-170",
+      "name": "Big Fish",
+      "description": "Checke mit 170 aus",
+      "icon": "fa-solid fa-award",
+      "rarity": "legendary",
+      "requirement": {
+        "type": "high_checkout",
+        "value": 170
+      }
+    },
+    {
+      "id": "elo-1500",
+      "name": "Master",
+      "description": "Erreiche 1500 ELO",
+      "icon": "fa-solid fa-chart-line",
+      "rarity": "legendary",
+      "requirement": {
+        "type": "elo",
+        "value": 1500
+      }
+    },
+    {
       "id": "first-place",
-      "name": "Platz 1",
+      "name": "King of the Week",
       "description": "Erreiche Platz 1 im wöchentlichen Leaderboard",
       "icon": "fa-solid fa-ranking-star",
       "rarity": "legendary",

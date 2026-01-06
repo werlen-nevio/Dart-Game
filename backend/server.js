@@ -299,6 +299,12 @@ app.get('/api/player/:username', async (req, res) => {
       allTimeHighestElo: user.allTimeHighestElo,
       totalGamesPlayed: user.totalGamesPlayed,
       allTimeWinRate,
+      // Player stats
+      maxThrow: user.maxThrow || 0,
+      highestCheckout: user.highestCheckout || 0,
+      perfectGames: user.perfectGames || 0,
+      winStreak: user.winStreak || 0,
+      currentWinStreak: user.currentWinStreak || 0,
       // Badges
       badges: user.badges || [],
       selectedBadge: user.selectedBadge,
@@ -405,8 +411,37 @@ function broadcastPartyState(partyCode) {
   io.to(partyCode).emit('party:state', party);
 }
 
+// Helper: Calculate game stats from party history for a specific player
+function calculateGameStats(party, playerUsername) {
+  const playerHistory = party.history.filter(h => h.player === playerUsername);
+
+  // Calculate max throw from all throws in the game
+  let maxThrow = 0;
+  playerHistory.forEach(entry => {
+    if (entry.throw > maxThrow) {
+      maxThrow = entry.throw;
+    }
+  });
+
+  // Get checkout score (the final winning throw)
+  const finalThrow = playerHistory.length > 0 ? playerHistory[playerHistory.length - 1] : null;
+  const checkoutScore = finalThrow && finalThrow.newScore === 0 ? finalThrow.throw : 0;
+
+  // Check for perfect game (9-dart finish for 501, 6-dart for 301)
+  const startScore = party.mode === '301' ? 301 : 501;
+  const perfectDartCount = party.mode === '301' ? 6 : 9;
+  const totalDarts = playerHistory.reduce((sum, entry) => sum + entry.shots.length, 0);
+  const isPerfectGame = totalDarts === perfectDartCount && startScore === (party.mode === '301' ? 301 : 501);
+
+  return {
+    maxThrow,
+    checkoutScore,
+    isPerfectGame
+  };
+}
+
 // Helper: Update ELO for winner and loser
-async function updateEloRatings(winnerUsername, loserUsername, gameStats = {}) {
+async function updateEloRatings(winnerUsername, loserUsername, winnerGameStats = {}, loserGameStats = {}) {
   try {
     const winner = await User.findOne({ username: winnerUsername });
     const loser = await User.findOne({ username: loserUsername });
@@ -431,6 +466,23 @@ async function updateEloRatings(winnerUsername, loserUsername, gameStats = {}) {
       winner.weeklyResetDate = getNextResetDate();
     }
 
+    // Update winner's game stats
+    if (winnerGameStats.maxThrow > winner.maxThrow) {
+      winner.maxThrow = winnerGameStats.maxThrow;
+    }
+    if (winnerGameStats.checkoutScore && winnerGameStats.checkoutScore > winner.highestCheckout) {
+      winner.highestCheckout = winnerGameStats.checkoutScore;
+    }
+    if (winnerGameStats.isPerfectGame) {
+      winner.perfectGames += 1;
+    }
+
+    // Update win streak
+    winner.currentWinStreak += 1;
+    if (winner.currentWinStreak > winner.winStreak) {
+      winner.winStreak = winner.currentWinStreak;
+    }
+
     loser.elo = Math.max(0, loser.elo + loserChange); // Don't go below 0
     loser.losses += 1;
     loser.allTimeLosses += 1;
@@ -442,6 +494,17 @@ async function updateEloRatings(winnerUsername, loserUsername, gameStats = {}) {
       loser.weeklyResetDate = getNextResetDate();
     }
 
+    // Update loser's game stats (important for badges like 180)
+    if (loserGameStats.maxThrow > loser.maxThrow) {
+      loser.maxThrow = loserGameStats.maxThrow;
+    }
+    if (loserGameStats.checkoutScore && loserGameStats.checkoutScore > loser.highestCheckout) {
+      loser.highestCheckout = loserGameStats.checkoutScore;
+    }
+
+    // Reset loser's win streak
+    loser.currentWinStreak = 0;
+
     await winner.save();
     await loser.save();
 
@@ -449,9 +512,15 @@ async function updateEloRatings(winnerUsername, loserUsername, gameStats = {}) {
     console.log(`ELO Update - ${loserUsername}: ${loser.elo - loserChange} → ${loser.elo} (${loserChange})`);
 
     // Check and award badges to the winner
-    const newBadges = await checkAndAwardBadges(winnerUsername, gameStats);
-    if (newBadges.length > 0) {
-      console.log(`Awarded ${newBadges.length} new badge(s) to ${winnerUsername}:`, newBadges.map(b => b.name).join(', '));
+    const winnerNewBadges = await checkAndAwardBadges(winnerUsername, winnerGameStats, true);
+    if (winnerNewBadges.length > 0) {
+      console.log(`Awarded ${winnerNewBadges.length} new badge(s) to ${winnerUsername}:`, winnerNewBadges.map(b => b.name).join(', '));
+    }
+
+    // Check and award badges to the loser (for performance-based badges)
+    const loserNewBadges = await checkAndAwardBadges(loserUsername, loserGameStats, false);
+    if (loserNewBadges.length > 0) {
+      console.log(`Awarded ${loserNewBadges.length} new badge(s) to ${loserUsername}:`, loserNewBadges.map(b => b.name).join(', '));
     }
 
     return {
@@ -461,7 +530,8 @@ async function updateEloRatings(winnerUsername, loserUsername, gameStats = {}) {
       loserChange,
       winnerNewElo: winner.elo,
       loserNewElo: loser.elo,
-      newBadges
+      winnerNewBadges,
+      loserNewBadges
     };
   } catch (error) {
     console.error('Error updating ELO:', error);
@@ -930,7 +1000,9 @@ io.on('connection', (socket) => {
           if (party.players.length === 2) {
             const loser = party.players.find(p => p.username !== currentPlayer.username);
             if (loser) {
-              eloChanges = await updateEloRatings(currentPlayer.username, loser.username);
+              const winnerGameStats = calculateGameStats(party, currentPlayer.username);
+              const loserGameStats = calculateGameStats(party, loser.username);
+              eloChanges = await updateEloRatings(currentPlayer.username, loser.username, winnerGameStats, loserGameStats);
             }
           }
 
@@ -968,7 +1040,9 @@ io.on('connection', (socket) => {
         if (party.players.length === 2) {
           const loser = party.players.find(p => p.username !== currentPlayer.username);
           if (loser) {
-            eloChanges = await updateEloRatings(currentPlayer.username, loser.username);
+            const winnerGameStats = calculateGameStats(party, currentPlayer.username);
+            const loserGameStats = calculateGameStats(party, loser.username);
+            eloChanges = await updateEloRatings(currentPlayer.username, loser.username, winnerGameStats, loserGameStats);
           }
         }
 
@@ -1161,8 +1235,12 @@ io.on('connection', (socket) => {
             if (remainingPlayer) {
               console.log(`Player ${user.username} did not rejoin. Awarding win to ${remainingPlayer.username}`);
 
+              // Calculate game stats for both players
+              const winnerGameStats = calculateGameStats(party, remainingPlayer.username);
+              const loserGameStats = calculateGameStats(party, disconnectedPlayer.username);
+
               // Update ELO ratings
-              const eloChanges = await updateEloRatings(remainingPlayer.username, disconnectedPlayer.username);
+              const eloChanges = await updateEloRatings(remainingPlayer.username, disconnectedPlayer.username, winnerGameStats, loserGameStats);
 
               // Set game state to finished
               party.gameState = 'finished';

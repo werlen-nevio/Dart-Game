@@ -72,8 +72,11 @@ export async function awardBadge(user, badgeId) {
 
 /**
  * Check and award badges based on user stats after a game
+ * @param {string} username - The username to check badges for
+ * @param {object} gameStats - Statistics from the game
+ * @param {boolean} wonGame - Whether the player won the game (default: true for backwards compatibility)
  */
-export async function checkAndAwardBadges(username, gameStats = {}) {
+export async function checkAndAwardBadges(username, gameStats = {}, wonGame = true) {
   try {
     const user = await User.findOne({ username });
     if (!user) return [];
@@ -107,23 +110,19 @@ export async function checkAndAwardBadges(username, gameStats = {}) {
           break;
 
         case 'max_score':
-          // Check if this game had the required max score
-          if (gameStats.maxThrow >= badge.requirement.value) {
-            shouldAward = true;
-          }
+          // Can be earned regardless of win/loss
+          shouldAward = user.maxThrow >= badge.requirement.value;
           break;
 
         case 'high_checkout':
-          // Check if this game had a high checkout
-          if (gameStats.checkoutScore >= badge.requirement.value) {
-            shouldAward = true;
-          }
+          // Can be earned regardless of win/loss
+          shouldAward = user.highestCheckout >= badge.requirement.value;
           break;
 
         case 'perfect_game':
-          // Check if this was a perfect game
-          if (gameStats.isPerfectGame) {
-            shouldAward = true;
+          // Perfect games can only be achieved by winning
+          if (wonGame) {
+            shouldAward = user.perfectGames >= badge.requirement.value;
           }
           break;
 
@@ -139,15 +138,14 @@ export async function checkAndAwardBadges(username, gameStats = {}) {
           break;
 
         case 'comeback':
-          // Check if user made a comeback
-          if (gameStats.comeback >= badge.requirement.value) {
+          // Comeback badges require winning
+          if (wonGame && gameStats.comeback >= badge.requirement.value) {
             shouldAward = true;
           }
           break;
 
         case 'win_streak':
-          // This would require tracking win streaks - placeholder for now
-          // Could be implemented by storing last N game results
+          shouldAward = user.winStreak >= badge.requirement.value;
           break;
 
         default:
