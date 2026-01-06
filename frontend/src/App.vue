@@ -89,11 +89,11 @@
         </div>
 
         <p style="color: #8a8d8f; margin-bottom: 24px; text-align: center;">
-          Entdecke alle verfügbaren Badges und wie du sie verdienen kannst
+          Entdecke alle verfügbaren Achievements und wie du sie verdienen kannst
         </p>
 
         <div v-if="allBadges.length === 0" style="text-align: center; color: #8a8d8f; padding: 40px 20px;">
-          <p style="font-size: 1.1rem;">Keine Badges verfügbar</p>
+          <p style="font-size: 1.1rem;">Keine Achievements verfügbar</p>
         </div>
 
         <div v-else class="all-badges-grid">
@@ -110,8 +110,13 @@
             </div>
             <h3 class="badge-display-name">{{ badge.name }}</h3>
             <p class="badge-display-description">{{ badge.description }}</p>
-            <div :class="['badge-rarity-tag', badge.rarity]">
-              {{ getRarityLabel(badge.rarity) }}
+            <div class="badge-footer">
+              <div :class="['badge-rarity-tag', badge.rarity]">
+                {{ getRarityLabel(badge.rarity) }}
+              </div>
+              <div :title="`${badge.ownedByPercentage}% aller User besitzen dieses Achievement`" v-if="badge.ownedByPercentage !== undefined" class="badge-ownership">
+                {{ badge.ownedByPercentage }}%
+              </div>
             </div>
           </div>
         </div>

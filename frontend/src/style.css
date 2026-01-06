@@ -2507,6 +2507,13 @@ button:disabled:hover {
   min-height: 40px;
 }
 
+.badge-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
 .badge-rarity-tag {
   padding: 4px 12px;
   border-radius: 12px;
@@ -2514,6 +2521,15 @@ button:disabled:hover {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.badge-ownership {
+  font-size: 0.7rem;
+  color: #6a6d70;
+  font-weight: 500;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
 }
 
 .badge-rarity-tag.common {

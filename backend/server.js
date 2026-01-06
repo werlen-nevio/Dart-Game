@@ -254,10 +254,29 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 // Get all available badges
-app.get('/api/badges', (req, res) => {
+app.get('/api/badges', async (req, res) => {
   try {
     const badges = getAllBadges();
-    res.json({ badges });
+
+    // Get total user count
+    const totalUsers = await User.countDocuments();
+
+    // Calculate percentage of users who have each badge
+    const badgesWithStats = await Promise.all(badges.map(async (badge) => {
+      const usersWithBadge = await User.countDocuments({
+        badges: { $elemMatch: { id: badge.id } }
+      });
+
+      const percentage = totalUsers > 0 ? Math.round((usersWithBadge / totalUsers) * 100) : 0;
+
+      return {
+        ...badge,
+        ownedBy: usersWithBadge,
+        ownedByPercentage: percentage
+      };
+    }));
+
+    res.json({ badges: badgesWithStats });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
