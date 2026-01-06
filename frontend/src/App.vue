@@ -380,11 +380,16 @@
     <div v-else>
       <div class="party-header-compact">
         <button @click="leaveParty" class="back-btn">← Party verlassen</button>
-        <div class="party-code">{{ party.code }}</div>
-        <div class="party-mode">
-          {{ party.mode }} • {{ party.outMode === 'double' ? 'Double Out' : 'Single Out' }}
-          <span v-if="isSpectator" class="spectator-badge"><i class="fas fa-eye"></i> Zuschauer</span>
+        <div class="party-info-group">
+          <div class="party-code">{{ party.code }}</div>
+          <div class="party-mode">
+            {{ party.mode }} • {{ party.outMode === 'double' ? 'Double Out' : 'Single Out' }}
+            <span v-if="isSpectator" class="spectator-badge"><i class="fas fa-eye"></i> Zuschauer</span>
+          </div>
         </div>
+        <button v-if="party.gameState !== 'finished'" @click="sharePartyInvite" class="share-btn" title="Einladung teilen">
+          <i class="fas fa-share-alt"></i>
+        </button>
       </div>
 
       <div v-if="message" :class="'alert alert-' + message.type">
@@ -864,6 +869,11 @@ const updateWindowWidth = () => {
 // Check if user is already authenticated via Google OAuth
 onMounted(async () => {
   window.addEventListener('resize', updateWindowWidth);
+
+  // Check for invite link in URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const joinCode = urlParams.get('join');
+
   try {
     const response = await fetch('/auth/user', {
       credentials: 'include'
@@ -880,6 +890,16 @@ onMounted(async () => {
       socket.emit('user:login', userData.username);
       // Load active parties to show user's active games
       refreshActiveParties();
+
+      // If there's a join code in URL, auto-join the party
+      if (joinCode) {
+        // Wait a bit for socket to connect
+        setTimeout(() => {
+          joinPartyByCode(joinCode);
+          // Clean up URL without refreshing
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }, 500);
+      }
     }
   } catch (error) {
     // User not authenticated, show login screen
@@ -1018,6 +1038,39 @@ function leaveParty() {
     mode: '501',
     outMode: 'double'
   };
+}
+
+async function sharePartyInvite() {
+  if (!party.value) return;
+
+  const inviteUrl = `${window.location.origin}/?join=${party.value.code}`;
+  const shareData = {
+    title: 'Dart Game Einladung',
+    text: `Tritt meiner Dart Party bei! Code: ${party.value.code}`,
+    url: inviteUrl
+  };
+
+  try {
+    // Try Web Share API first (works on mobile)
+    if (navigator.share) {
+      await navigator.share(shareData);
+      showMessage('Einladung geteilt!', 'success');
+    } else {
+      // Fallback: Copy to clipboard
+      await navigator.clipboard.writeText(inviteUrl);
+      showMessage('Einladungslink kopiert!', 'success');
+    }
+  } catch (error) {
+    // If share was cancelled or failed, try clipboard
+    if (error.name !== 'AbortError') {
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+        showMessage('Einladungslink kopiert!', 'success');
+      } catch (clipboardError) {
+        showMessage('Fehler beim Teilen', 'error');
+      }
+    }
+  }
 }
 
 function refreshActiveParties() {

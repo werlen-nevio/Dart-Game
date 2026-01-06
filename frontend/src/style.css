@@ -356,6 +356,14 @@ h3 {
   border: 1px solid #2a2d2f;
 }
 
+.party-info-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  justify-content: center;
+}
+
 .party-mode {
   color: #8a8d8f;
   font-size: 0.85rem;
@@ -825,6 +833,12 @@ button:disabled:hover {
     padding: 12px;
   }
 
+  .party-info-group {
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+
   .party-mode {
     width: 100%;
     text-align: center;
@@ -1191,6 +1205,38 @@ button:disabled:hover {
   font-size: 20px;
 }
 
+/* Share Button */
+.share-btn {
+  background: #1f2224;
+  border: 1px solid #3a3d3f;
+  color: #e0e0e0;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+}
+
+.share-btn:hover {
+  background: #252829;
+  border-color: #3a3d3f;
+  color: #ffffff;
+  transform: translateX(-4px);
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.05);
+}
+
+.share-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.share-btn i {
+  font-size: 20px;
+}
+
 .menu-btn.join-party {
   background: #2a2d2f;
   color: #ffffff;
@@ -1225,6 +1271,17 @@ button:disabled:hover {
   }
 
   .settings-btn i {
+    font-size: 18px;
+  }
+
+  .share-btn {
+    width: 44px;
+    height: 44px;
+    padding: 10px;
+    min-height: 44px;
+  }
+
+  .share-btn i {
     font-size: 18px;
   }
 

@@ -1,16 +1,13 @@
+- on rematch let winner start last
+
 - add game history
-- add player stats
 
 - add more game modes (cricket, shanghai, etc.)
 - add tournament mode
-
-- add mobile app
 
 - add customizable player profiles
 - add in-game currency and store
 - implement daily/weekly challenges
 
-- add game invites
-- add notifications for game invites and updates
-
 - add AI opponents for training mode
+- add local games
