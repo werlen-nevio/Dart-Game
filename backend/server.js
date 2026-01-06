@@ -1027,6 +1027,7 @@ io.on('connection', (socket) => {
 
           // Set game state to finished
           party.gameState = 'finished';
+          party.lastWinner = currentPlayer.username;
 
           io.to(user.partyCode).emit('game:winner', {
             username: currentPlayer.username,
@@ -1067,6 +1068,7 @@ io.on('connection', (socket) => {
 
         // Set game state to finished
         party.gameState = 'finished';
+        party.lastWinner = currentPlayer.username;
 
         io.to(user.partyCode).emit('game:winner', {
           username: currentPlayer.username,
@@ -1138,20 +1140,61 @@ io.on('connection', (socket) => {
     const party = parties.get(user.partyCode);
     if (!party) return;
 
-    // Reset all players to starting score
-    const startScore = party.mode === '301' ? 301 : 501;
-    party.players.forEach(player => {
-      player.score = startScore;
+    // Check if minimum 2 players
+    if (party.players.length < 2) {
+      socket.emit('error', 'Mindestens 2 Spieler erforderlich, um neu zu starten!');
+      return;
+    }
+
+    // Initialize rematch votes if not exists
+    if (!party.rematchVotes) {
+      party.rematchVotes = new Set();
+    }
+
+    // Add this player's vote
+    party.rematchVotes.add(user.username);
+
+    // Broadcast updated vote count
+    io.to(user.partyCode).emit('rematch:votes', {
+      votes: party.rematchVotes.size,
+      total: party.players.length,
+      voters: Array.from(party.rematchVotes)
     });
 
-    // Reset game state
-    party.gameState = 'lobby';
-    party.currentPlayerIndex = 0;
-    party.currentShots = [];
-    party.history = [];
+    console.log(`${user.username} voted for rematch (${party.rematchVotes.size}/${party.players.length})`);
 
-    broadcastPartyState(user.partyCode);
-    console.log(`Game restarted in party ${user.partyCode}`);
+    // Check if all players voted
+    if (party.rematchVotes.size === party.players.length) {
+      // Find the winner from the last game to set as starting player
+      let winnerIndex = 0;
+      if (party.lastWinner) {
+        const foundIndex = party.players.findIndex(player => player.username === party.lastWinner);
+        if (foundIndex !== -1) {
+          winnerIndex = foundIndex;
+          console.log(`DEBUG: Found last winner ${party.lastWinner} at index ${foundIndex}`);
+        } else {
+          console.log(`DEBUG: Last winner ${party.lastWinner} not found in players`);
+        }
+      } else {
+        console.log(`DEBUG: No lastWinner set in party`);
+      }
+
+      // Reset all players to starting score
+      const startScore = party.mode === '301' ? 301 : 501;
+      party.players.forEach(player => {
+        player.score = startScore;
+      });
+
+      // Reset game state with winner as starting player
+      party.gameState = 'lobby';
+      party.currentPlayerIndex = winnerIndex;
+      party.currentShots = [];
+      party.history = [];
+      party.rematchVotes = null;
+
+      broadcastPartyState(user.partyCode);
+      console.log(`Game restarted in party ${user.partyCode}, ${party.players[winnerIndex].username} starts (index: ${winnerIndex})`);
+    }
   });
 
   // Leave Party
@@ -1263,6 +1306,7 @@ io.on('connection', (socket) => {
 
               // Set game state to finished
               party.gameState = 'finished';
+              party.lastWinner = remainingPlayer.username;
 
               // Emit winner event
               io.to(user.partyCode).emit('game:winner', {

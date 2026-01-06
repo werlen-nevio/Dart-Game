@@ -744,8 +744,18 @@
             {{ currentUserEloChange >= 0 ? '+' : '' }}{{ currentUserEloChange }}
           </div>
         </div>
+        <div v-if="rematchVotes && rematchVotes.total > 0" style="margin-top: 20px; padding: 12px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+          <div style="font-size: 0.9rem; color: #8a8d8f; margin-bottom: 4px;">Warten auf Spieler:</div>
+          <div style="font-size: 1.2rem; font-weight: 600;">{{ rematchVotes.votes }}/{{ rematchVotes.total }} bereit</div>
+        </div>
         <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 32px;">
-          <button @click="restartGame" class="success" style="width: 100%;">Nochmal spielen</button>
+          <button
+            @click="restartGame"
+            :class="['success', { disabled: rematchVotes && rematchVotes.voters.includes(user) }]"
+            :disabled="rematchVotes && rematchVotes.voters.includes(user)"
+            style="width: 100%;">
+            {{ rematchVotes && rematchVotes.voters.includes(user) ? '✓ Bereit' : 'Nochmal spielen' }}
+          </button>
           <button @click="winner = null; leaveParty()" class="secondary" style="width: 100%;">Zurück zum Menü</button>
         </div>
       </div>
@@ -860,6 +870,7 @@ const windowWidth = ref(window.innerWidth);
 const disconnectedPlayer = ref(null);
 const reconnectCountdown = ref(0);
 const winnerEloChange = ref(null);
+const rematchVotes = ref(null);
 
 // Update window width on resize
 const updateWindowWidth = () => {
@@ -1567,6 +1578,12 @@ socket.on('game:winner', (data) => {
   // Clear disconnect countdown when game ends
   disconnectedPlayer.value = null;
   reconnectCountdown.value = 0;
+  // Reset rematch votes
+  rematchVotes.value = null;
+});
+
+socket.on('rematch:votes', (data) => {
+  rematchVotes.value = data;
 });
 
 socket.on('error', (msg) => {
