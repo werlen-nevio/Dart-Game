@@ -1165,13 +1165,14 @@ io.on('connection', (socket) => {
 
     // Check if all players voted
     if (party.rematchVotes.size === party.players.length) {
-      // Find the winner from the last game to set as starting player
-      let winnerIndex = 0;
+      // Find the winner from the last game - winner should start LAST
+      let startingPlayerIndex = 0;
       if (party.lastWinner) {
-        const foundIndex = party.players.findIndex(player => player.username === party.lastWinner);
-        if (foundIndex !== -1) {
-          winnerIndex = foundIndex;
-          console.log(`DEBUG: Found last winner ${party.lastWinner} at index ${foundIndex}`);
+        const winnerIndex = party.players.findIndex(player => player.username === party.lastWinner);
+        if (winnerIndex !== -1) {
+          // Set starting player to the one AFTER the winner, so winner goes last
+          startingPlayerIndex = (winnerIndex + 1) % party.players.length;
+          console.log(`DEBUG: Found last winner ${party.lastWinner} at index ${winnerIndex}, next player starts at index ${startingPlayerIndex}`);
         } else {
           console.log(`DEBUG: Last winner ${party.lastWinner} not found in players`);
         }
@@ -1185,15 +1186,15 @@ io.on('connection', (socket) => {
         player.score = startScore;
       });
 
-      // Reset game state with winner as starting player
+      // Reset game state with player after winner as starting player
       party.gameState = 'lobby';
-      party.currentPlayerIndex = winnerIndex;
+      party.currentPlayerIndex = startingPlayerIndex;
       party.currentShots = [];
       party.history = [];
       party.rematchVotes = null;
 
       broadcastPartyState(user.partyCode);
-      console.log(`Game restarted in party ${user.partyCode}, ${party.players[winnerIndex].username} starts (index: ${winnerIndex})`);
+      console.log(`Game restarted in party ${user.partyCode}, ${party.players[startingPlayerIndex].username} starts (index: ${startingPlayerIndex})`);
     }
   });
 
