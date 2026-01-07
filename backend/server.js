@@ -758,7 +758,7 @@ io.on('connection', (socket) => {
   });
 
   // Create Party
-  socket.on('party:create', ({ partyName, mode, outMode }) => {
+  socket.on('party:create', ({ partyName, mode, outMode, gameType, localPlayerNames }) => {
     const user = socketUsers.get(socket.id);
     if (!user) return socket.emit('error', 'Not logged in');
 
@@ -770,19 +770,38 @@ io.on('connection', (socket) => {
       name: partyName,
       mode,
       outMode,
+      gameType: gameType || 'standard', // 'standard', 'local'
       players: [{
         username: user.username,
         score: startScore,
         socketId: socket.id,
         profilePicture: user.profilePicture,
-        selectedBadgeObj: user.selectedBadgeObj
+        selectedBadgeObj: user.selectedBadgeObj,
+        isLocalPlayer: false
       }],
       spectators: [],
       gameState: 'lobby', // 'lobby' or 'active'
       currentPlayerIndex: 0,
       currentShots: [],
-      history: []
+      history: [],
+      sessionStats: {} // For local games
     };
+
+    // Add local players for local mode
+    if (gameType === 'local' && localPlayerNames && Array.isArray(localPlayerNames)) {
+      localPlayerNames.forEach(name => {
+        if (name && name.trim()) {
+          party.players.push({
+            username: name.trim(),
+            score: startScore,
+            socketId: socket.id, // All local players share the same socket
+            profilePicture: null,
+            selectedBadgeObj: null,
+            isLocalPlayer: true
+          });
+        }
+      });
+    }
 
     parties.set(code, party);
     user.partyCode = code;
@@ -790,7 +809,7 @@ io.on('connection', (socket) => {
 
     socket.emit('party:created', party);
     broadcastPartyState(code);
-    console.log(`Party created: ${code} by ${user.username}`);
+    console.log(`Party created: ${code} by ${user.username} (${gameType})`);
   });
 
   // Get Active Parties
@@ -799,19 +818,30 @@ io.on('connection', (socket) => {
     if (!user) return socket.emit('error', 'Not logged in');
 
     // Convert parties map to array with relevant info
-    const activeParties = Array.from(parties.values()).map(party => ({
-      code: party.code,
-      name: party.name,
-      mode: party.mode,
-      outMode: party.outMode,
-      playerCount: party.players.length,
-      gameState: party.gameState || 'lobby',
-      players: party.players.map(p => ({
-        username: p.username,
-        profilePicture: p.profilePicture,
-        selectedBadgeObj: p.selectedBadgeObj
-      }))
-    }));
+    // Filter out local games OR include only if the user is the host
+    const activeParties = Array.from(parties.values())
+      .filter(party => {
+        // If it's not a local game, include it
+        if (party.gameType !== 'local') return true;
+
+        // If it's a local game, only include it if the user is the host
+        const hostPlayer = party.players.find(p => !p.isLocalPlayer);
+        return hostPlayer && hostPlayer.username === user.username;
+      })
+      .map(party => ({
+        code: party.code,
+        name: party.name,
+        mode: party.mode,
+        outMode: party.outMode,
+        gameType: party.gameType,
+        playerCount: party.players.length,
+        gameState: party.gameState || 'lobby',
+        players: party.players.map(p => ({
+          username: p.username,
+          profilePicture: p.profilePicture,
+          selectedBadgeObj: p.selectedBadgeObj
+        }))
+      }));
 
     socket.emit('party:active_list', activeParties);
   });
@@ -827,6 +857,14 @@ io.on('connection', (socket) => {
     // Check if game is finished
     if (party.gameState === 'finished') {
       return socket.emit('error', 'Spiel ist beendet! Du kannst nicht mehr beitreten.');
+    }
+
+    // Check if this is a local game - only the host can be in a local game
+    if (party.gameType === 'local') {
+      const hostPlayer = party.players.find(p => !p.isLocalPlayer);
+      if (hostPlayer && hostPlayer.username !== user.username) {
+        return socket.emit('error', 'Dies ist ein lokales Spiel. Nur der Host kann teilnehmen.');
+      }
     }
 
     // Check if already in party (allow rejoin even if game is active)
@@ -887,6 +925,11 @@ io.on('connection', (socket) => {
 
     const party = parties.get(code);
     if (!party) return socket.emit('error', 'Party not found');
+
+    // Block spectating local games
+    if (party.gameType === 'local') {
+      return socket.emit('error', 'Lokale Spiele können nicht beobachtet werden.');
+    }
 
     // Initialize spectators array if it doesn't exist (for backwards compatibility)
     if (!party.spectators) {
@@ -951,8 +994,9 @@ io.on('connection', (socket) => {
 
     const currentPlayer = party.players[party.currentPlayerIndex];
 
-    // Check if the user is the current player
-    if (currentPlayer.username !== user.username) {
+    // Check if the user is the current player or host of a local game
+    const isHost = party.gameType === 'local' && party.players.some(p => p.username === user.username && !p.isLocalPlayer);
+    if (currentPlayer.username !== user.username && !isHost) {
       socket.emit('error', 'Du bist nicht am Zug!');
       return;
     }
@@ -1014,14 +1058,33 @@ io.on('connection', (socket) => {
           });
           party.currentShots = [];
 
-          // Update ELO for 1v1 games
+          // Update ELO for 1v1 standard games only (not local)
           let eloChanges = null;
-          if (party.players.length === 2) {
+          if (party.players.length === 2 && party.gameType === 'standard') {
             const loser = party.players.find(p => p.username !== currentPlayer.username);
-            if (loser) {
+            if (loser && !loser.isLocalPlayer) {
               const winnerGameStats = calculateGameStats(party, currentPlayer.username);
               const loserGameStats = calculateGameStats(party, loser.username);
               eloChanges = await updateEloRatings(currentPlayer.username, loser.username, winnerGameStats, loserGameStats);
+            }
+          }
+
+          // Update session stats for local games
+          if (party.gameType !== 'standard') {
+            const winnerGameStats = calculateGameStats(party, currentPlayer.username);
+            if (!party.sessionStats[currentPlayer.username]) {
+              party.sessionStats[currentPlayer.username] = {
+                wins: 0,
+                maxThrow: 0,
+                highestCheckout: 0
+              };
+            }
+            party.sessionStats[currentPlayer.username].wins += 1;
+            if (winnerGameStats.maxThrow > party.sessionStats[currentPlayer.username].maxThrow) {
+              party.sessionStats[currentPlayer.username].maxThrow = winnerGameStats.maxThrow;
+            }
+            if (winnerGameStats.checkoutScore > party.sessionStats[currentPlayer.username].highestCheckout) {
+              party.sessionStats[currentPlayer.username].highestCheckout = winnerGameStats.checkoutScore;
             }
           }
 
@@ -1055,14 +1118,33 @@ io.on('connection', (socket) => {
         });
         party.currentShots = [];
 
-        // Update ELO for 1v1 games
+        // Update ELO for 1v1 standard games only (not local)
         let eloChanges = null;
-        if (party.players.length === 2) {
+        if (party.players.length === 2 && party.gameType === 'standard') {
           const loser = party.players.find(p => p.username !== currentPlayer.username);
-          if (loser) {
+          if (loser && !loser.isLocalPlayer) {
             const winnerGameStats = calculateGameStats(party, currentPlayer.username);
             const loserGameStats = calculateGameStats(party, loser.username);
             eloChanges = await updateEloRatings(currentPlayer.username, loser.username, winnerGameStats, loserGameStats);
+          }
+        }
+
+        // Update session stats for local games
+        if (party.gameType !== 'standard') {
+          const winnerGameStats = calculateGameStats(party, currentPlayer.username);
+          if (!party.sessionStats[currentPlayer.username]) {
+            party.sessionStats[currentPlayer.username] = {
+              wins: 0,
+              maxThrow: 0,
+              highestCheckout: 0
+            };
+          }
+          party.sessionStats[currentPlayer.username].wins += 1;
+          if (winnerGameStats.maxThrow > party.sessionStats[currentPlayer.username].maxThrow) {
+            party.sessionStats[currentPlayer.username].maxThrow = winnerGameStats.maxThrow;
+          }
+          if (winnerGameStats.checkoutScore > party.sessionStats[currentPlayer.username].highestCheckout) {
+            party.sessionStats[currentPlayer.username].highestCheckout = winnerGameStats.checkoutScore;
           }
         }
 
@@ -1092,8 +1174,9 @@ io.on('connection', (socket) => {
 
     const currentPlayer = party.players[party.currentPlayerIndex];
 
-    // Check if the user is the current player
-    if (currentPlayer.username !== user.username) {
+    // Check if the user is the current player or host of a local game
+    const isHost = party.gameType === 'local' && party.players.some(p => p.username === user.username && !p.isLocalPlayer);
+    if (currentPlayer.username !== user.username && !isHost) {
       socket.emit('error', 'Du bist nicht am Zug!');
       return;
     }
@@ -1116,8 +1199,9 @@ io.on('connection', (socket) => {
 
     const currentPlayer = party.players[party.currentPlayerIndex];
 
-    // Check if the user is the current player
-    if (currentPlayer.username !== user.username) {
+    // Check if the user is the current player or host of a local game
+    const isHost = party.gameType === 'local' && party.players.some(p => p.username === user.username && !p.isLocalPlayer);
+    if (currentPlayer.username !== user.username && !isHost) {
       socket.emit('error', 'Du bist nicht am Zug!');
       return;
     }
@@ -1146,6 +1230,41 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // For local games, the host can restart immediately
+    if (party.gameType === 'local') {
+      const hostPlayer = party.players.find(p => !p.isLocalPlayer);
+      if (hostPlayer && hostPlayer.username === user.username) {
+        // Host can restart immediately for local games
+        const startScore = party.mode === '301' ? 301 : 501;
+
+        // Find the winner from the last game - winner should start LAST
+        let startingPlayerIndex = 0;
+        if (party.lastWinner) {
+          const winnerIndex = party.players.findIndex(player => player.username === party.lastWinner);
+          if (winnerIndex !== -1) {
+            startingPlayerIndex = (winnerIndex + 1) % party.players.length;
+          }
+        }
+
+        // Reset all players to starting score
+        party.players.forEach(player => {
+          player.score = startScore;
+        });
+
+        // Reset game state
+        party.gameState = 'lobby';
+        party.currentPlayerIndex = startingPlayerIndex;
+        party.currentShots = [];
+        party.history = [];
+        party.rematchVotes = null;
+
+        broadcastPartyState(user.partyCode);
+        console.log(`Local game restarted in party ${user.partyCode}, ${party.players[startingPlayerIndex].username} starts`);
+        return;
+      }
+    }
+
+    // For standard games, use voting system
     // Initialize rematch votes if not exists
     if (!party.rematchVotes) {
       party.rematchVotes = new Set();

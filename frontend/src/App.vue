@@ -70,8 +70,19 @@
         </div>
 
         <div class="menu-buttons">
-          <button @click="currentView = 'lobby'" class="menu-btn">Standard</button>
-          <button disabled class="menu-btn secondary">Coming soon</button>
+          <button @click="selectGameMode('standard')" class="menu-btn">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 1.1rem;">Standard</span>
+              <span style="font-size: 0.85rem; opacity: 0.8;">Ranked • ELO</span>
+            </div>
+          </button>
+          <button @click="selectGameMode('local')" class="menu-btn">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 1.1rem;">Local Game</span>
+              <span style="font-size: 0.85rem; opacity: 0.8;">Multiplayer • No ELO</span>
+            </div>
+          </button>
+          <button class="menu-btn">Comming Soon</button>
           <button @click="currentView = 'joinParty'" class="menu-btn join-party">Party beitreten</button>
         </div>
       </div>
@@ -277,15 +288,42 @@
       <div class="card">
         <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
           <button @click="currentView = 'playMenu'" class="back-btn">← Zurück</button>
-          <h2 style="margin: 0; flex: 1; text-align: center;">Standard Game</h2>
+          <h2 style="margin: 0; flex: 1; text-align: center;">
+            {{ createForm.gameType === 'local' ? 'Local Game' : 'Standard Game' }}
+          </h2>
           <div style="width: 108px;"></div>
         </div>
 
-        <h3 style="margin-bottom: 12px;">Party erstellen</h3>
-        <div class="form-group">
+        <h3 style="margin-bottom: 12px;">{{ createForm.gameType === 'standard' ? 'Party erstellen' : 'Spiel erstellen' }}</h3>
+
+        <!-- Local Game: Player Names -->
+        <div v-if="createForm.gameType === 'local'" class="form-group">
+          <label>How many players? (including you)</label>
+          <select v-model.number="createForm.localPlayerCount">
+            <option :value="2">2 Players</option>
+            <option :value="3">3 Players</option>
+            <option :value="4">4 Players</option>
+            <option :value="5">5 Players</option>
+            <option :value="6">6 Players</option>
+          </select>
+        </div>
+
+        <div v-if="createForm.gameType === 'local'" class="form-group">
+          <label>Player Names</label>
+          <input
+            v-for="i in createForm.localPlayerCount - 1"
+            :key="i"
+            v-model="createForm.localPlayerNames[i - 1]"
+            :placeholder="`Player ${i + 1} Name`"
+            style="margin-bottom: 8px;"
+          />
+        </div>
+
+        <div v-if="createForm.gameType !== 'local'" class="form-group">
           <label>Party Name</label>
           <input v-model="createForm.partyName" placeholder="Meine Dart Party" />
         </div>
+
         <div class="form-group">
           <label>Spielmodus</label>
           <select v-model="createForm.mode">
@@ -300,7 +338,8 @@
             <option value="double">Double Out</option>
           </select>
         </div>
-        <button @click="createParty">Party erstellen</button>
+
+        <button @click="createParty">{{ createForm.gameType === 'standard' ? 'Party erstellen' : 'Spiel starten' }}</button>
       </div>
     </div>
 
@@ -851,7 +890,10 @@ const allBadges = ref([]);
 const createForm = ref({
   partyName: '',
   mode: '501',
-  outMode: 'double'
+  outMode: 'double',
+  gameType: 'standard', // 'standard', 'local'
+  localPlayerCount: 2,
+  localPlayerNames: []
 });
 const message = ref(null);
 const dartboardMessage = ref(null);
@@ -961,6 +1003,11 @@ const isCurrentPlayer = computed(() => {
   if (!party.value || !user.value) return false;
   // Spectators can never be current player
   if (isSpectator.value) return false;
+  // For local games, the host can always input scores
+  if (party.value.gameType === 'local') {
+    const hostPlayer = party.value.players.find(p => !p.isLocalPlayer);
+    return hostPlayer?.username === user.value;
+  }
   return currentPlayer.value?.username === user.value;
 });
 
@@ -976,6 +1023,7 @@ const isMobile = computed(() => {
 
 const myActiveGames = computed(() => {
   if (!user.value || !activeParties.value) return [];
+  // Include all active games where user is a player (including local games)
   return activeParties.value.filter(party =>
     party.players.some(p => p.username === user.value) && party.gameState === 'active'
   );
@@ -1184,11 +1232,30 @@ function restartGame() {
   socket.emit('game:restart');
 }
 
+function selectGameMode(gameType) {
+  createForm.value.gameType = gameType;
+  createForm.value.localPlayerNames = [];
+  currentView.value = 'lobby';
+}
+
 function createParty() {
-  if (!createForm.value.partyName.trim()) {
+  // Validation
+  if (createForm.value.gameType === 'standard' && !createForm.value.partyName.trim()) {
     showMessage('Bitte Party-Name eingeben', 'error');
     return;
   }
+
+  if (createForm.value.gameType === 'local') {
+    // Validate local player names
+    const validNames = createForm.value.localPlayerNames.filter(name => name && name.trim());
+    if (validNames.length < createForm.value.localPlayerCount - 1) {
+      showMessage('Bitte alle Spielernamen eingeben', 'error');
+      return;
+    }
+    createForm.value.localPlayerNames = validNames;
+    createForm.value.partyName = 'Local Game';
+  }
+
   socket.emit('party:create', createForm.value);
 }
 
